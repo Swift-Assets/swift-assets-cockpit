@@ -8,7 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
-import { WatchlistAcquisitionTable } from "@/components/cockpit/watchlist-acquisition-table";
+import { WatchlistAcquisitionFilteredTable } from "@/components/cockpit/watchlist-acquisition-filtered-table";
 import { getMyWatchlist } from "@/lib/cockpit/watchlist.queries";
 import { getInternalWatchlist } from "@/lib/cockpit/watchlist-internal.queries";
 import { getMyTasks } from "@/lib/cockpit/tasks.queries";
@@ -82,7 +82,7 @@ export default async function WatchlistPage() {
                 Noch keine Einträge in Ihrer Watchlist.
               </p>
             ) : (
-              <WatchlistAcquisitionTable
+              <WatchlistAcquisitionFilteredTable
                 rows={internal.rows}
                 openTaskKeys={openTaskKeys}
                 activeDraftKeys={draftKeys}
