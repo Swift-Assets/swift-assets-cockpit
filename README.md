@@ -16,7 +16,7 @@ Planned modules (routes under `/cockpit`):
 | Route | Module | Status |
 |---|---|---|
 | `/cockpit/dashboard` | Executive dashboard & KPIs | placeholder |
-| `/cockpit/watchlist` | Acquisition watchlist (companies & Nachlass) | read-only view |
+| `/cockpit/watchlist` | Acquisition watchlist (companies & Nachlass) | status/note/follow-up actions via RPC |
 | `/cockpit/operations` | Pipeline / jobs / system health | placeholder |
 | `/cockpit/operations/inbox` | System / deal / triage inboxes | placeholder |
 | `/cockpit/portal-guard` | Public portal health & privacy scans | placeholder |

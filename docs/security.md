@@ -44,6 +44,13 @@ These belong exclusively in **Supabase Edge Function secrets / backend runtime**
   categories, and scores are intentionally omitted for now.
 - Watchlist tables stay lean (IDs/status/note/follow-up). Personal data is joined
   via internal RLS-gated views, never copied into watchlist tables.
+- **Watchlist writes (status, note, follow-up, remove) go exclusively through the
+  existing SECURITY DEFINER RPCs from migration 0023** — `cockpit_watchlist_update`,
+  `cockpit_unwatch_company`, `cockpit_unwatch_nachlass`. The frontend performs **no
+  direct INSERT/UPDATE/DELETE** on watchlist tables. Ownership is always derived
+  server-side from `auth.uid()`; the RPCs enforce role and `nachlass_authorized`
+  checks. RPC errors are mapped to generic German messages and never leak SQL
+  internals to the UI.
 
 ## 4. Email
 
