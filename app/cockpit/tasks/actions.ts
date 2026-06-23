@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { isTaskPriority, isTaskRelatedKind, isTaskType } from "@/lib/cockpit/tasks";
+import {
+  isTaskPriority,
+  isTaskRelatedKind,
+  isTaskStatus,
+  isTaskType,
+} from "@/lib/cockpit/tasks";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -100,6 +105,54 @@ export async function createTaskAction(
   });
   if (error) return { ok: false, error: friendlyError(error.message) };
 
+  revalidate();
+  return { ok: true };
+}
+
+export interface UpdateTaskInput {
+  task_id: string;
+  /** Provide to change; omit to leave unchanged. */
+  priority?: string;
+  status?: string;
+  /** "" clears the due date; "YYYY-MM-DD" sets it; undefined = no change. */
+  due_at?: string;
+}
+
+/** Update priority / status / due date via cockpit_update_task (set-flag pattern). */
+export async function updateTaskAction(
+  input: UpdateTaskInput,
+): Promise<ActionResult> {
+  if (!isUuid(input.task_id)) return { ok: false, error: "Ungültige Eingabe." };
+
+  const params: Record<string, unknown> = { p_task_id: input.task_id };
+
+  if (input.priority !== undefined) {
+    if (!isTaskPriority(input.priority))
+      return { ok: false, error: "Ungültige Priorität." };
+    params.p_set_priority = true;
+    params.p_priority = input.priority;
+  }
+
+  if (input.status !== undefined) {
+    if (!isTaskStatus(input.status))
+      return { ok: false, error: "Ungültiger Status." };
+    params.p_set_status = true;
+    params.p_status = input.status;
+  }
+
+  if (input.due_at !== undefined) {
+    const iso = optionalDueIso(input.due_at);
+    if (iso === "invalid") return { ok: false, error: "Ungültiges Datum." };
+    params.p_set_due = true;
+    params.p_due_at = iso; // null clears the due date
+  }
+
+  // Nothing to change.
+  if (Object.keys(params).length === 1) return { ok: true };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cockpit_update_task", params);
+  if (error) return { ok: false, error: friendlyError(error.message) };
   revalidate();
   return { ok: true };
 }

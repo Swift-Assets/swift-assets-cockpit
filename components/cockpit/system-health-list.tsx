@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/cockpit/status-badge";
 import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
+import { hasOpenTaskForContext } from "@/lib/cockpit/tasks";
 import type { SystemHealthCheck } from "@/lib/cockpit/operations.queries";
 
 function formatDateTime(value: string | null): string {
@@ -55,10 +56,13 @@ function DetailsMetrics({
 export function SystemHealthList({
   checks,
   showTaskAction = false,
+  openTaskKeys = [],
 }: {
   checks: SystemHealthCheck[];
   /** When true, red/yellow checks show a one-click "create task" button. */
   showTaskAction?: boolean;
+  /** Open-task context keys for duplicate detection (from openTaskContextKeys). */
+  openTaskKeys?: string[];
 }) {
   if (checks.length === 0) {
     return (
@@ -89,6 +93,12 @@ export function SystemHealthList({
                     relatedKind={dataGroup ? "data_quality" : "system"}
                     relatedLabel={c.check_key}
                     sourceView="v_cockpit_system_health"
+                    hasExistingTask={hasOpenTaskForContext(openTaskKeys, {
+                      taskType: dataGroup ? "data_quality" : "system_issue",
+                      relatedKind: dataGroup ? "data_quality" : "system",
+                      sourceView: "v_cockpit_system_health",
+                      relatedLabel: c.check_key,
+                    })}
                   />
                 ) : null}
               </span>

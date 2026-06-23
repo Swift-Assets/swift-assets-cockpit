@@ -6,6 +6,8 @@ import {
   isSafeGithubRunUrl,
 } from "@/lib/cockpit/operations.queries";
 import { SystemHealthList } from "@/components/cockpit/system-health-list";
+import { getMyTasks } from "@/lib/cockpit/tasks.queries";
+import { openTaskContextKeys } from "@/lib/cockpit/tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -39,8 +41,9 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default async function OperationsPage() {
-  const [{ enrichment, ingestion, recentEvents, github }, systemHealth] =
-    await Promise.all([getOperationsData(), getSystemHealth()]);
+  const [{ enrichment, ingestion, recentEvents, github }, systemHealth, tasksResult] =
+    await Promise.all([getOperationsData(), getSystemHealth(), getMyTasks()]);
+  const openTaskKeys = openTaskContextKeys(tasksResult.rows);
 
   return (
     <div className="space-y-6">
@@ -214,7 +217,11 @@ export default async function OperationsPage() {
           }
         >
           {systemHealth.available ? (
-            <SystemHealthList checks={systemHealth.checks} showTaskAction />
+            <SystemHealthList
+              checks={systemHealth.checks}
+              showTaskAction
+              openTaskKeys={openTaskKeys}
+            />
           ) : null}
         </DashboardCard>
 

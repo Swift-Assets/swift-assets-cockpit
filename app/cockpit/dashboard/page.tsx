@@ -21,6 +21,10 @@ import {
   isSafeGithubRunUrl,
 } from "@/lib/cockpit/operations.queries";
 import { getMyTasks, summarizeTasks } from "@/lib/cockpit/tasks.queries";
+import {
+  hasOpenTaskForContext,
+  openTaskContextKeys,
+} from "@/lib/cockpit/tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +87,7 @@ export default async function DashboardPage() {
     getMyTasks(),
   ]);
   const tasks = summarizeTasks(tasksResult);
+  const openTaskKeys = openTaskContextKeys(tasksResult.rows);
   const tasksStatus: TrafficStatus = !tasks.available
     ? "gray"
     : tasks.overdue > 0
@@ -287,6 +292,12 @@ export default async function DashboardPage() {
                         relatedKind={a.task.relatedKind}
                         relatedLabel={a.task.relatedLabel}
                         sourceView={a.task.sourceView}
+                        hasExistingTask={hasOpenTaskForContext(openTaskKeys, {
+                          taskType: a.task.taskType,
+                          relatedKind: a.task.relatedKind,
+                          sourceView: a.task.sourceView,
+                          relatedLabel: a.task.relatedLabel,
+                        })}
                       />
                     ) : null}
                   </span>

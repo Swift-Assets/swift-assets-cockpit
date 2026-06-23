@@ -23,6 +23,13 @@ export type TaskType =
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
+export type TaskStatus =
+  | "open"
+  | "in_progress"
+  | "waiting"
+  | "done"
+  | "archived";
+
 export type TaskRelatedKind =
   | "company"
   | "nachlass"
@@ -54,6 +61,14 @@ export const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: "urgent", label: "Dringend" },
 ];
 
+export const TASK_STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
+  { value: "open", label: "Offen" },
+  { value: "in_progress", label: "In Bearbeitung" },
+  { value: "waiting", label: "Wartend" },
+  { value: "done", label: "Erledigt" },
+  { value: "archived", label: "Archiviert" },
+];
+
 export const RELATED_KIND_OPTIONS: { value: TaskRelatedKind; label: string }[] = [
   { value: "company", label: "Firma" },
   { value: "nachlass", label: "Nachlass" },
@@ -79,6 +94,16 @@ export function isTaskPriority(v: string): v is TaskPriority {
 }
 export function isTaskRelatedKind(v: string): v is TaskRelatedKind {
   return RELATED_KINDS.has(v as TaskRelatedKind);
+}
+
+const TASK_STATUSES = new Set(TASK_STATUS_OPTIONS.map((o) => o.value));
+export function isTaskStatus(v: string): v is TaskStatus {
+  return TASK_STATUSES.has(v as TaskStatus);
+}
+
+/** A task is "open" (blocks duplicates) when not done and not archived. */
+export function isOpenTaskStatus(status: string | null): boolean {
+  return status === "open" || status === "in_progress" || status === "waiting";
 }
 
 export function taskTypeLabel(v: string | null): string {
@@ -114,4 +139,89 @@ export interface TaskRow {
   due_bucket: TaskDueBucket | null;
   event_count: number | null;
   latest_event_at: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Lightweight duplicate detection for context-created tasks                    */
+/* -------------------------------------------------------------------------- */
+
+/** Safe context describing a would-be task created from a UI element. */
+export interface TaskContext {
+  taskType: string;
+  relatedKind?: string | null;
+  relatedId?: string | null;
+  sourceView?: string | null;
+  relatedLabel?: string | null;
+}
+
+function idKey(kind: string, id: string): string {
+  return `id:${kind}:${id}`;
+}
+function labelKey(
+  kind: string,
+  sourceView: string,
+  label: string,
+  taskType: string,
+): string {
+  return `lbl:${kind}:${sourceView}:${label}:${taskType}`;
+}
+
+/**
+ * Builds the set of "open task" context keys from already-loaded task rows.
+ * Returned as a string[] so it can be passed to client components. Each open
+ * task contributes an id-based key (when it has a related_id) and a
+ * label-based key (source_view + related_label + task_type).
+ */
+export function openTaskContextKeys(tasks: TaskRow[]): string[] {
+  const out = new Set<string>();
+  for (const t of tasks) {
+    if (!isOpenTaskStatus(t.status)) continue;
+    const kind = t.related_kind ?? "";
+    if (t.related_id) out.add(idKey(kind, t.related_id));
+    out.add(
+      labelKey(kind, t.source_view ?? "", t.related_label ?? "", t.task_type ?? ""),
+    );
+  }
+  return [...out];
+}
+
+/**
+ * True when an open task already matches the given context. Matches by
+ * related_id when the context carries one, otherwise by
+ * source_view + related_label + task_type (related_kind always considered).
+ */
+export function hasOpenTaskForContext(
+  keys: string[] | Set<string>,
+  ctx: TaskContext,
+): boolean {
+  const set = Array.isArray(keys) ? new Set(keys) : keys;
+  const kind = ctx.relatedKind ?? "";
+  if (ctx.relatedId) {
+    return set.has(idKey(kind, ctx.relatedId));
+  }
+  return set.has(
+    labelKey(kind, ctx.sourceView ?? "", ctx.relatedLabel ?? "", ctx.taskType),
+  );
+}
+
+/** Returns the matching open task (for showing its title), or null. */
+export function findOpenTaskForContext(
+  tasks: TaskRow[],
+  ctx: TaskContext,
+): TaskRow | null {
+  const kind = ctx.relatedKind ?? "";
+  for (const t of tasks) {
+    if (!isOpenTaskStatus(t.status)) continue;
+    if ((t.related_kind ?? "") !== kind) continue;
+    if (ctx.relatedId) {
+      if (t.related_id === ctx.relatedId) return t;
+    } else if (
+      (t.source_view ?? "") === (ctx.sourceView ?? "") &&
+      (t.related_label ?? "") === (ctx.relatedLabel ?? "") &&
+      (t.task_type ?? "") === ctx.taskType
+    ) {
+      return t;
+    }
+  }
+  return null;
 }

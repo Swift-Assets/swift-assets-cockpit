@@ -110,7 +110,12 @@ function TaskTable({ rows }: { rows: TaskRow[] }) {
                 {formatDate(t.updated_at)}
               </td>
               <td className="py-2 pr-4">
-                <TaskRowActions taskId={t.task_id} status={t.status} />
+                <TaskRowActions
+                  taskId={t.task_id}
+                  status={t.status}
+                  priority={t.priority}
+                  dueAt={t.due_at}
+                />
               </td>
             </tr>
           ))}

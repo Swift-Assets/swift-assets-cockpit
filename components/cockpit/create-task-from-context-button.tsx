@@ -26,6 +26,8 @@ export function CreateTaskFromContextButton({
   label = "Aufgabe erstellen",
   size = "sm",
   variant = "outline",
+  hasExistingTask = false,
+  existingTaskLabel,
 }: {
   title: string;
   taskType: CreateTaskInput["task_type"];
@@ -39,6 +41,9 @@ export function CreateTaskFromContextButton({
   label?: string;
   size?: "sm" | "default" | "lg";
   variant?: "default" | "outline" | "ghost";
+  /** When true, an open task already exists for this context: block creation. */
+  hasExistingTask?: boolean;
+  existingTaskLabel?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
@@ -65,6 +70,17 @@ export function CreateTaskFromContextButton({
 
   if (done) {
     return <span className="text-xs text-status-green">Aufgabe erstellt ✓</span>;
+  }
+
+  if (hasExistingTask) {
+    return (
+      <span
+        className="text-xs text-muted-foreground"
+        title={existingTaskLabel ?? undefined}
+      >
+        Aufgabe existiert
+      </span>
+    );
   }
 
   return (

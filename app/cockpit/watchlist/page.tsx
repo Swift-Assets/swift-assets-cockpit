@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
 import { getMyWatchlist } from "@/lib/cockpit/watchlist.queries";
+import { getMyTasks } from "@/lib/cockpit/tasks.queries";
+import { openTaskContextKeys } from "@/lib/cockpit/tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,11 @@ export const dynamic = "force-dynamic";
  * shown here.
  */
 export default async function WatchlistPage() {
-  const { rows, error } = await getMyWatchlist();
+  const [{ rows, error }, tasksResult] = await Promise.all([
+    getMyWatchlist(),
+    getMyTasks(),
+  ]);
+  const openTaskKeys = openTaskContextKeys(tasksResult.rows);
 
   // Company entity_ids already on the watchlist, to mark "Bereits in Watchlist".
   const watchedCompanyIds = rows
@@ -64,7 +70,7 @@ export default async function WatchlistPage() {
               Noch keine Einträge in Ihrer Watchlist.
             </p>
           ) : (
-            <WatchlistFilteredTable rows={rows} />
+            <WatchlistFilteredTable rows={rows} openTaskKeys={openTaskKeys} />
           )}
         </CardContent>
       </Card>

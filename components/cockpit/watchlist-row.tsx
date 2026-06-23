@@ -20,6 +20,7 @@ import {
   updateStatusAction,
 } from "@/app/cockpit/watchlist/actions";
 import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
+import { hasOpenTaskForContext } from "@/lib/cockpit/tasks";
 
 const COLUMN_COUNT = 8;
 
@@ -42,8 +43,25 @@ function toDateInput(value: string | null): string {
   return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
 }
 
-export function WatchlistRow({ row }: { row: Row }) {
+export function WatchlistRow({
+  row,
+  openTaskKeys = [],
+}: {
+  row: Row;
+  openTaskKeys?: string[];
+}) {
   const subjectId = rpcSubjectId(row);
+  const followUpRelatedKind =
+    row.kind === "company"
+      ? "company"
+      : row.kind === "nachlass"
+        ? "nachlass"
+        : "watchlist";
+  const hasOpenFollowUp = hasOpenTaskForContext(openTaskKeys, {
+    taskType: "follow_up",
+    relatedKind: followUpRelatedKind,
+    relatedId: subjectId ?? undefined,
+  });
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState(false);
@@ -184,13 +202,7 @@ export function WatchlistRow({ row }: { row: Row }) {
               }`}
               taskType="follow_up"
               priority="medium"
-              relatedKind={
-                row.kind === "company"
-                  ? "company"
-                  : row.kind === "nachlass"
-                    ? "nachlass"
-                    : "watchlist"
-              }
+              relatedKind={followUpRelatedKind}
               relatedId={subjectId ?? undefined}
               relatedLabel={
                 row.kind === "company"
@@ -199,6 +211,7 @@ export function WatchlistRow({ row }: { row: Row }) {
               }
               sourceView="v_cockpit_my_watchlist"
               label="Follow-up erstellen"
+              hasExistingTask={hasOpenFollowUp}
             />
             <Button
               type="button"

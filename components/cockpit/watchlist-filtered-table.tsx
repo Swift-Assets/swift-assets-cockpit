@@ -61,7 +61,13 @@ function matchesFollowUp(bucket: FollowUpBucket, filter: FollowUpFilter): boolea
   }
 }
 
-export function WatchlistFilteredTable({ rows }: { rows: Row[] }) {
+export function WatchlistFilteredTable({
+  rows,
+  openTaskKeys = [],
+}: {
+  rows: Row[];
+  openTaskKeys?: string[];
+}) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
@@ -224,7 +230,11 @@ export function WatchlistFilteredTable({ rows }: { rows: Row[] }) {
             </thead>
             <tbody>
               {visible.map((row) => (
-                <WatchlistRow key={row.watch_id} row={row} />
+                <WatchlistRow
+                  key={row.watch_id}
+                  row={row}
+                  openTaskKeys={openTaskKeys}
+                />
               ))}
             </tbody>
           </table>
