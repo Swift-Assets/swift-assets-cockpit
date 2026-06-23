@@ -19,6 +19,7 @@ import {
   getSystemHealth,
   isSafeGithubRunUrl,
 } from "@/lib/cockpit/operations.queries";
+import { getMyTasks, summarizeTasks } from "@/lib/cockpit/tasks.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -69,12 +70,25 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default async function DashboardPage() {
-  const [{ watchlist, companyActivity, reviewQueue, coverage }, systemHealth, ops] =
-    await Promise.all([
-      getDashboardData(),
-      getSystemHealth(),
-      getOperationsData(),
-    ]);
+  const [
+    { watchlist, companyActivity, reviewQueue, coverage },
+    systemHealth,
+    ops,
+    tasksResult,
+  ] = await Promise.all([
+    getDashboardData(),
+    getSystemHealth(),
+    getOperationsData(),
+    getMyTasks(),
+  ]);
+  const tasks = summarizeTasks(tasksResult);
+  const tasksStatus: TrafficStatus = !tasks.available
+    ? "gray"
+    : tasks.overdue > 0
+      ? "red"
+      : tasks.highOrUrgent > 0 || tasks.dueToday > 0
+        ? "yellow"
+        : "green";
 
   const watchlistStatus: TrafficStatus = !watchlist.available
     ? "gray"
@@ -112,6 +126,18 @@ export default async function DashboardPage() {
   if (watchlist.available && watchlist.overdue > 0) {
     attention.push({
       label: `Überfällige Follow-ups: ${watchlist.overdue}`,
+      status: "yellow",
+    });
+  }
+  if (tasks.available && tasks.overdue > 0) {
+    attention.push({
+      label: `Überfällige Aufgaben: ${tasks.overdue}`,
+      status: "red",
+    });
+  }
+  if (tasks.available && tasks.highOrUrgent > 0) {
+    attention.push({
+      label: `Aufgaben hoch/dringend: ${tasks.highOrUrgent}`,
       status: "yellow",
     });
   }
@@ -493,10 +519,35 @@ export default async function DashboardPage() {
         />
         <DashboardCard
           title="Aufgaben / Tasks"
-          status="gray"
-          value="—"
-          description="Noch nicht verbunden — benötigt cockpit_tasks (zukünftige Migration)."
-        />
+          status={tasksStatus}
+          value={tasks.available ? tasks.openTotal : "—"}
+          description={
+            tasks.available ? (
+              <Link href="/cockpit/tasks" className="underline">
+                Alle Aufgaben öffnen
+              </Link>
+            ) : (
+              "Noch nicht verbunden — benötigt v_cockpit_my_tasks (Migration 0026, repo-only)."
+            )
+          }
+        >
+          {tasks.available ? (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+              <Metric label="Offen" value={tasks.openTotal} />
+              <Metric
+                label="Überfällig"
+                value={tasks.overdue}
+                emphasize={tasks.overdue > 0}
+              />
+              <Metric label="Heute fällig" value={tasks.dueToday} />
+              <Metric
+                label="Hoch/Dringend"
+                value={tasks.highOrUrgent}
+                emphasize={tasks.highOrUrgent > 0}
+              />
+            </dl>
+          ) : null}
+        </DashboardCard>
       </div>
     </div>
   );

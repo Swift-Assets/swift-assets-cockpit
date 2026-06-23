@@ -1,5 +1,6 @@
 import {
   Calendar,
+  CheckSquare,
   LayoutDashboard,
   Mail,
   Settings,
@@ -34,6 +35,12 @@ export const COCKPIT_NAV: CockpitNavItem[] = [
     href: "/cockpit/watchlist",
     icon: Star,
     description: "Acquisition watchlist (companies & Nachlass)",
+  },
+  {
+    label: "Aufgaben",
+    href: "/cockpit/tasks",
+    icon: CheckSquare,
+    description: "Internal tasks & follow-ups",
   },
   {
     label: "Operations",

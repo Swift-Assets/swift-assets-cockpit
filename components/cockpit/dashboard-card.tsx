@@ -23,7 +23,7 @@ export function DashboardCard({
   status: TrafficStatus;
   statusLabel?: string;
   value?: ReactNode;
-  description?: string;
+  description?: ReactNode;
   children?: ReactNode;
 }) {
   return (
