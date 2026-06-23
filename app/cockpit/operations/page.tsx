@@ -34,7 +34,8 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default async function OperationsPage() {
-  const { enrichment, ingestion, recentEvents } = await getOperationsData();
+  const { enrichment, ingestion, recentEvents, github } =
+    await getOperationsData();
 
   return (
     <div className="space-y-6">
@@ -145,13 +146,41 @@ export default async function OperationsPage() {
           ) : null}
         </DashboardCard>
 
-        {/* 4–7. Placeholders — no safe source yet */}
+        {/* 4. GitHub Actions — live if a safe run URL exists */}
         <DashboardCard
           title="GitHub Actions"
-          status="gray"
-          value="—"
-          description="Noch nicht verbunden (Workflow-Monitoring fehlt)."
-        />
+          status={github.available ? github.status : "gray"}
+          description={
+            github.available
+              ? "Letzter Workflow-Lauf aus v_daily_run_log."
+              : "Noch nicht verbunden."
+          }
+        >
+          {github.available ? (
+            <div className="space-y-2 text-sm">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                <Metric
+                  label="Letzter Workflow-Lauf"
+                  value={formatDate(github.runDate)}
+                />
+                <Metric label="Auslöser" value={github.triggeredBy ?? "—"} />
+                <Metric label="Status" value={github.runStatus ?? "—"} />
+              </dl>
+              {github.runUrl ? (
+                <a
+                  href={github.runUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium transition-colors hover:bg-muted"
+                >
+                  GitHub Run öffnen
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+        </DashboardCard>
+
+        {/* 5–7. Placeholders — no safe source yet */}
         <DashboardCard
           title="Datenbank / Supabase"
           status="gray"
