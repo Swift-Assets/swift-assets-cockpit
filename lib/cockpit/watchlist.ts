@@ -86,3 +86,125 @@ export function sanitizeSearchTerm(raw: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/* -------------------------------------------------------------------------- */
+/* Client-side filtering & sorting helpers (operate on already-loaded rows)    */
+/* -------------------------------------------------------------------------- */
+
+/** Mutually-exclusive follow-up buckets, relative to "now". */
+export type FollowUpBucket =
+  | "none"
+  | "overdue"
+  | "today"
+  | "this_week"
+  | "later";
+
+/** Lower-cases and folds diacritics for accent-insensitive text matching. */
+export function normalizedText(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function startOfDayMs(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * Classifies a follow-up timestamp into a bucket relative to `now`.
+ * Buckets are mutually exclusive; "this_week" is the remainder of the current
+ * Mon–Sun week strictly after today, "later" is beyond it.
+ */
+export function followUpBucket(
+  value: string | null,
+  now: Date = new Date(),
+): FollowUpBucket {
+  if (!value) return "none";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "none";
+
+  const todayStart = startOfDayMs(now);
+  const dayMs = 86_400_000;
+  const tomorrowStart = todayStart + dayMs;
+  const followDay = startOfDayMs(d);
+
+  if (followDay < todayStart) return "overdue";
+  if (followDay === todayStart) return "today";
+
+  // Days remaining until (and including) the upcoming Sunday.
+  const dow = now.getDay(); // 0 = Sun … 6 = Sat
+  const daysUntilSunday = (7 - dow) % 7;
+  const weekEndExclusive = tomorrowStart + daysUntilSunday * dayMs;
+
+  return followDay < weekEndExclusive ? "this_week" : "later";
+}
+
+export type WatchlistSortKey =
+  | "updated_desc"
+  | "updated_asc"
+  | "followup_asc"
+  | "followup_desc"
+  | "name_asc"
+  | "name_desc";
+
+export const SORT_OPTIONS: { value: WatchlistSortKey; label: string }[] = [
+  { value: "updated_desc", label: "Letztes Update: neueste zuerst" },
+  { value: "updated_asc", label: "Letztes Update: älteste zuerst" },
+  { value: "followup_asc", label: "Follow-up: früheste zuerst" },
+  { value: "followup_desc", label: "Follow-up: späteste zuerst" },
+  { value: "name_asc", label: "Name: A–Z" },
+  { value: "name_desc", label: "Name: Z–A" },
+];
+
+function timeOrNull(value: string | null): number | null {
+  if (!value) return null;
+  const t = new Date(value).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+/** Compares two timestamps; null/missing values always sort last. */
+function compareTime(
+  a: string | null,
+  b: string | null,
+  direction: "asc" | "desc",
+): number {
+  const ta = timeOrNull(a);
+  const tb = timeOrNull(b);
+  if (ta === null && tb === null) return 0;
+  if (ta === null) return 1;
+  if (tb === null) return -1;
+  return direction === "asc" ? ta - tb : tb - ta;
+}
+
+/** Stable comparator for the watchlist sort options. Missing values sort last. */
+export function compareWatchlistRows(
+  a: WatchlistRow,
+  b: WatchlistRow,
+  sort: WatchlistSortKey,
+): number {
+  switch (sort) {
+    case "updated_desc":
+      return compareTime(a.updated_at, b.updated_at, "desc");
+    case "updated_asc":
+      return compareTime(a.updated_at, b.updated_at, "asc");
+    case "followup_asc":
+      return compareTime(a.next_follow_up_at, b.next_follow_up_at, "asc");
+    case "followup_desc":
+      return compareTime(a.next_follow_up_at, b.next_follow_up_at, "desc");
+    case "name_asc":
+    case "name_desc": {
+      const na = normalizedText(a.title);
+      const nb = normalizedText(b.title);
+      if (!na && !nb) return 0;
+      if (!na) return 1;
+      if (!nb) return -1;
+      const cmp = na.localeCompare(nb, "de");
+      return sort === "name_asc" ? cmp : -cmp;
+    }
+    default:
+      return 0;
+  }
+}
