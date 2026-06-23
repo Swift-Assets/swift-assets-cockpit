@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WatchlistRow } from "@/components/cockpit/watchlist-row";
+import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { getMyWatchlist } from "@/lib/cockpit/watchlist.queries";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,11 @@ const HEADERS = [
 export default async function WatchlistPage() {
   const { rows, error } = await getMyWatchlist();
 
+  // Company entity_ids already on the watchlist, to mark "Bereits in Watchlist".
+  const watchedCompanyIds = rows
+    .filter((r) => r.kind === "company" && r.subject_id)
+    .map((r) => r.subject_id as string);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -49,6 +55,8 @@ export default async function WatchlistPage() {
         </div>
         <Badge variant="green">Phase 5A · aktiv</Badge>
       </div>
+
+      <WatchlistAddPanel watchedCompanyIds={watchedCompanyIds} />
 
       <Card>
         <CardHeader>

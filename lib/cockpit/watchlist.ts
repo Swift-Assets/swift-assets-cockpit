@@ -52,3 +52,37 @@ export function rpcSubjectId(row: {
 /** Columns selected from the view — non-sensitive only. */
 export const WATCHLIST_SELECT_COLUMNS =
   "kind, watch_id, subject_id, detection_id, title, city, bundesland, status, note, next_follow_up_at, updated_at";
+
+/**
+ * A safe company candidate for the add flow, sourced from swift_v2.v_cockpit_companies.
+ * Only non-sensitive company columns. `entity_id` is the portal_entities.id passed
+ * to cockpit_watch_company(p_entity_id).
+ */
+export interface CompanyCandidate {
+  entity_id: string;
+  display_name: string | null;
+  city: string | null;
+  state: string | null;
+  registry_court: string | null;
+  registry_type: string | null;
+  registry_number: string | null;
+}
+
+export const COMPANY_CANDIDATE_COLUMNS =
+  "entity_id, display_name, city, state, registry_court, registry_type, registry_number";
+
+/** Columns selected from the candidate view — non-sensitive only. */
+export const MIN_SEARCH_LENGTH = 2;
+
+/**
+ * Sanitizes a free-text search term for safe use inside a PostgREST `or`/`ilike`
+ * filter. Strips characters that have meaning in the filter grammar.
+ */
+export function sanitizeSearchTerm(raw: string): string {
+  return raw
+    .trim()
+    .slice(0, 60)
+    .replace(/[,()*%:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}

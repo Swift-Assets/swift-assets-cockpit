@@ -2,11 +2,38 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { isWatchStatus, type WatchKind } from "@/lib/cockpit/watchlist";
+import { searchCompanyCandidates } from "@/lib/cockpit/watchlist.queries";
+import {
+  isWatchStatus,
+  type CompanyCandidate,
+  type WatchKind,
+} from "@/lib/cockpit/watchlist";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+export type SearchResult =
+  | { ok: true; rows: CompanyCandidate[] }
+  | { ok: false; error: string };
 
 const PATH = "/cockpit/watchlist";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+/**
+ * Validates an optional follow-up date (YYYY-MM-DD) and returns it as an ISO
+ * timestamp, or null when empty. Throws a sentinel on invalid input.
+ */
+function optionalFollowUpIso(date: string): string | null | "invalid" {
+  const trimmed = date.trim();
+  if (!trimmed) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return "invalid";
+  const d = new Date(`${trimmed}T09:00:00`);
+  return Number.isNaN(d.getTime()) ? "invalid" : d.toISOString();
+}
 
 /**
  * Maps known SECURITY DEFINER RPC exceptions to safe German messages.
@@ -25,6 +52,10 @@ function friendlyError(raw?: string): string {
     return "Eintrag wurde nicht gefunden.";
   if (msg.includes("invalid_status")) return "Ungültiger Status.";
   if (msg.includes("invalid_kind")) return "Ungültiger Eintragstyp.";
+  if (msg.includes("entity_not_eligible_company"))
+    return "Dieses Unternehmen kann nicht hinzugefügt werden.";
+  if (msg.includes("detection_not_found"))
+    return "Eintrag wurde nicht gefunden.";
   if (
     msg.includes("permission") ||
     msg.includes("denied") ||
@@ -121,6 +152,69 @@ export async function clearFollowUpAction(
     p_kind: kind,
     p_subject_id: subjectId,
     p_clear_follow_up: true,
+  });
+  if (error) return { ok: false, error: friendlyError(error.message) };
+
+  revalidatePath(PATH);
+  return { ok: true };
+}
+
+/** Search eligible company candidates (read-only, non-sensitive columns). */
+export async function searchCompaniesAction(
+  query: string,
+): Promise<SearchResult> {
+  const { rows, error } = await searchCompanyCandidates(query);
+  if (error) return { ok: false, error };
+  return { ok: true, rows };
+}
+
+/** Add a company to the user's watchlist via cockpit_watch_company. */
+export async function watchCompanyAction(
+  entityId: string,
+  status: string,
+  note: string,
+  followUpDate: string,
+): Promise<ActionResult> {
+  if (!isUuid(entityId)) return { ok: false, error: "Ungültige Eingabe." };
+  if (!isWatchStatus(status)) return { ok: false, error: "Ungültiger Status." };
+
+  const iso = optionalFollowUpIso(followUpDate);
+  if (iso === "invalid") return { ok: false, error: "Ungültiges Datum." };
+
+  const trimmedNote = note.trim();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cockpit_watch_company", {
+    p_entity_id: entityId,
+    p_note: trimmedNote.length > 0 ? trimmedNote : null,
+    p_status: status,
+    p_next_follow_up_at: iso,
+  });
+  if (error) return { ok: false, error: friendlyError(error.message) };
+
+  revalidatePath(PATH);
+  return { ok: true };
+}
+
+/** Add a Nachlass case to the user's watchlist via cockpit_watch_nachlass. */
+export async function watchNachlassAction(
+  detectionId: string,
+  status: string,
+  note: string,
+  followUpDate: string,
+): Promise<ActionResult> {
+  if (!isUuid(detectionId)) return { ok: false, error: "Ungültige Eingabe." };
+  if (!isWatchStatus(status)) return { ok: false, error: "Ungültiger Status." };
+
+  const iso = optionalFollowUpIso(followUpDate);
+  if (iso === "invalid") return { ok: false, error: "Ungültiges Datum." };
+
+  const trimmedNote = note.trim();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cockpit_watch_nachlass", {
+    p_detection_id: detectionId,
+    p_note: trimmedNote.length > 0 ? trimmedNote : null,
+    p_status: status,
+    p_next_follow_up_at: iso,
   });
   if (error) return { ok: false, error: friendlyError(error.message) };
 

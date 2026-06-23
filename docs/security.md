@@ -44,13 +44,23 @@ These belong exclusively in **Supabase Edge Function secrets / backend runtime**
   categories, and scores are intentionally omitted for now.
 - Watchlist tables stay lean (IDs/status/note/follow-up). Personal data is joined
   via internal RLS-gated views, never copied into watchlist tables.
-- **Watchlist writes (status, note, follow-up, remove) go exclusively through the
-  existing SECURITY DEFINER RPCs from migration 0023** — `cockpit_watchlist_update`,
-  `cockpit_unwatch_company`, `cockpit_unwatch_nachlass`. The frontend performs **no
-  direct INSERT/UPDATE/DELETE** on watchlist tables. Ownership is always derived
-  server-side from `auth.uid()`; the RPCs enforce role and `nachlass_authorized`
+- **Watchlist writes (add, status, note, follow-up, remove) go exclusively through
+  the existing SECURITY DEFINER RPCs from migration 0023** — `cockpit_watch_company`,
+  `cockpit_watch_nachlass`, `cockpit_watchlist_update`, `cockpit_unwatch_company`,
+  `cockpit_unwatch_nachlass`. The frontend performs **no direct
+  INSERT/UPDATE/DELETE** on watchlist tables. Ownership is always derived
+  server-side from `auth.uid()`; the RPCs enforce role, company eligibility
+  (`entity_type='company' AND data_sensitivity='normal'`) and `nachlass_authorized`
   checks. RPC errors are mapped to generic German messages and never leak SQL
   internals to the UI.
+- **Add flow candidate search:** company search reads the cockpit-safe, RLS-gated
+  view `v_cockpit_companies` (non-sensitive columns only: name, city, state,
+  registry court/type/number, `entity_id`). **Nachlass candidate search is
+  intentionally disabled** in the UI: no safe, non-PII Nachlass candidate view
+  exists yet, and the existing Nachlass views carry sensitive estate-detection
+  data. Enabling it requires a future, explicitly-approved internal view (e.g.
+  `v_cockpit_nachlass_candidates`) — until then the UI shows a "not activated"
+  notice and reads no Nachlass data.
 
 ## 4. Email
 
