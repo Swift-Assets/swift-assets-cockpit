@@ -1,6 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/cockpit/dashboard-card";
-import { getOperationsData } from "@/lib/cockpit/operations.queries";
+import {
+  getOperationsData,
+  isSafeGithubRunUrl,
+} from "@/lib/cockpit/operations.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +126,8 @@ export default async function OperationsPage() {
                 <tr className="border-b border-border text-left text-muted-foreground">
                   <th className="py-1.5 pr-3 font-medium">Datum</th>
                   <th className="py-1.5 pr-3 font-medium">Status</th>
-                  <th className="py-1.5 font-medium">Dauer</th>
+                  <th className="py-1.5 pr-3 font-medium">Dauer</th>
+                  <th className="py-1.5 font-medium">Quelle</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,8 +138,25 @@ export default async function OperationsPage() {
                   >
                     <td className="py-1.5 pr-3">{formatDate(r.run_date)}</td>
                     <td className="py-1.5 pr-3">{r.status ?? "—"}</td>
-                    <td className="py-1.5 text-muted-foreground">
+                    <td className="py-1.5 pr-3 text-muted-foreground">
                       {formatDuration(r.duration_seconds)}
+                    </td>
+                    <td className="py-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">
+                          {r.triggered_by ?? "—"}
+                        </span>
+                        {isSafeGithubRunUrl(r.triggered_by_run_url) ? (
+                          <a
+                            href={r.triggered_by_run_url as string}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium underline underline-offset-2 hover:text-foreground"
+                          >
+                            Run öffnen
+                          </a>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -39,6 +39,8 @@ export interface OpsEventRow {
   run_date: string | null;
   status: string | null;
   duration_seconds: number | null;
+  triggered_by: string | null;
+  triggered_by_run_url: string | null;
 }
 
 export interface RecentEventsKpis {
@@ -209,7 +211,9 @@ async function getRecentEvents(): Promise<RecentEventsKpis> {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("v_daily_run_log")
-      .select("run_id, run_date, status, duration_seconds")
+      .select(
+        "run_id, run_date, status, duration_seconds, triggered_by, triggered_by_run_url",
+      )
       .order("run_date", { ascending: false, nullsFirst: false })
       .limit(5);
 
