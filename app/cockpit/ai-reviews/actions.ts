@@ -25,6 +25,8 @@ function friendlyError(raw?: string): string {
   if (m.includes("no_active_cockpit_profile")) return "Kein aktiver Cockpit-Zugang.";
   if (m.includes("invalid_ai_response"))
     return "KI-Antwort konnte nicht verarbeitet werden.";
+  if (m.includes("invalid_review_state"))
+    return "Diese KI-Bewertung wurde bereits verarbeitet. Bitte neu laden.";
   if (m.includes("invalid_kind")) return "Ungültiger Typ.";
   if (
     m.includes("failed to send") ||

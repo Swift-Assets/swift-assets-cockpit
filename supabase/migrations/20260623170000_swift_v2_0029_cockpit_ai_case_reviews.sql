@@ -228,8 +228,10 @@ create or replace function swift_v2.cockpit_store_ai_case_review_result(
 as $$
 declare
     v_role text := swift_v2._cockpit_writer_role();
+    v_rev  swift_v2.cockpit_ai_case_reviews%rowtype;
 begin
-    perform swift_v2._cockpit_ai_review_require_access(p_review_id);
+    v_rev := swift_v2._cockpit_ai_review_require_access(p_review_id);
+    if v_rev.status <> 'pending' then raise exception 'invalid_review_state'; end if;
 
     if p_acquisition_score is not null and (p_acquisition_score < 0 or p_acquisition_score > 100) then
         raise exception 'invalid_score';
@@ -257,7 +259,8 @@ begin
         error_message = null,
         updated_by = (select auth.uid()),
         updated_at = now()
-    where review_id = p_review_id;
+    where review_id = p_review_id
+      and status = 'pending';
 
     perform swift_v2._cockpit_ai_review_event(
         p_review_id, 'generated', null,
@@ -273,15 +276,18 @@ create or replace function swift_v2.cockpit_fail_ai_case_review(
 as $$
 declare
     v_role text := swift_v2._cockpit_writer_role();
+    v_rev  swift_v2.cockpit_ai_case_reviews%rowtype;
 begin
-    perform swift_v2._cockpit_ai_review_require_access(p_review_id);
+    v_rev := swift_v2._cockpit_ai_review_require_access(p_review_id);
+    if v_rev.status <> 'pending' then raise exception 'invalid_review_state'; end if;
     update swift_v2.cockpit_ai_case_reviews set
         status = 'failed',
         error_code = left(coalesce(p_error_code,'unknown'), 100),
         error_message = left(coalesce(p_error_message,''), 500),
         updated_by = (select auth.uid()),
         updated_at = now()
-    where review_id = p_review_id;
+    where review_id = p_review_id
+      and status = 'pending';
 
     perform swift_v2._cockpit_ai_review_event(
         p_review_id, 'failed', null,
@@ -297,11 +303,15 @@ create or replace function swift_v2.cockpit_archive_ai_case_review(
 as $$
 declare
     v_role text := swift_v2._cockpit_writer_role();
+    v_rev  swift_v2.cockpit_ai_case_reviews%rowtype;
 begin
-    perform swift_v2._cockpit_ai_review_require_access(p_review_id);
+    v_rev := swift_v2._cockpit_ai_review_require_access(p_review_id);
+    -- Already archived: no-op (no state change, no duplicate event).
+    if v_rev.status = 'archived' then return; end if;
     update swift_v2.cockpit_ai_case_reviews
        set status = 'archived', updated_by = (select auth.uid()), updated_at = now()
-     where review_id = p_review_id;
+     where review_id = p_review_id
+       and status <> 'archived';
     perform swift_v2._cockpit_ai_review_event(p_review_id, 'archived', null,
         jsonb_build_object('actor_role', v_role));
 end;

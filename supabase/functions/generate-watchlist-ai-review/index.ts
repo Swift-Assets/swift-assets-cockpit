@@ -29,6 +29,60 @@ Regeln:
 Antworte AUSSCHLIESSLICH mit striktem JSON nach diesem Schema:
 {"summary_ar": string, "summary_de": string, "acquisition_score": number, "priority": "low"|"medium"|"high"|"urgent", "reasoning_ar": string, "risk_flags": string[], "recommended_next_action": string, "confidence": "low"|"medium"|"high"}`;
 
+// Strictly parse + validate the provider's JSON. Throws "invalid_ai_response"
+// on any malformed/out-of-contract output so we never store garbage.
+function parseAndValidateAiReview(text: string) {
+  let raw: any;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error("invalid_ai_response");
+  }
+  if (!raw || typeof raw !== "object") throw new Error("invalid_ai_response");
+
+  const score = raw.acquisition_score;
+  if (
+    typeof score !== "number" ||
+    !Number.isInteger(score) ||
+    score < 0 ||
+    score > 100
+  ) {
+    throw new Error("invalid_ai_response");
+  }
+
+  if (!["low", "medium", "high", "urgent"].includes(raw.priority)) {
+    throw new Error("invalid_ai_response");
+  }
+  if (!["low", "medium", "high"].includes(raw.confidence)) {
+    throw new Error("invalid_ai_response");
+  }
+
+  const asTrimmedString = (v: unknown): string => {
+    if (typeof v !== "string") throw new Error("invalid_ai_response");
+    return v.trim();
+  };
+
+  if (!Array.isArray(raw.risk_flags)) throw new Error("invalid_ai_response");
+  const risk_flags = raw.risk_flags
+    .map((f: unknown) => {
+      if (typeof f !== "string") throw new Error("invalid_ai_response");
+      return f.trim();
+    })
+    .filter((f: string) => f.length > 0)
+    .slice(0, 12);
+
+  return {
+    summary_ar: asTrimmedString(raw.summary_ar),
+    summary_de: asTrimmedString(raw.summary_de),
+    reasoning_ar: asTrimmedString(raw.reasoning_ar),
+    recommended_next_action: asTrimmedString(raw.recommended_next_action),
+    acquisition_score: score,
+    priority: raw.priority as string,
+    confidence: raw.confidence as string,
+    risk_flags,
+  };
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -145,8 +199,8 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ ok: false, error: "ai_provider_not_configured", review_id: reviewId }, 400);
   }
 
-  // 4) Generate + parse strict JSON.
-  let parsed: Record<string, unknown>;
+  // 4) Generate + strictly validate JSON (never store malformed output).
+  let review: ReturnType<typeof parseAndValidateAiReview>;
   let provider = "";
   let model = "";
   try {
@@ -155,29 +209,28 @@ Deno.serve(async (req: Request) => {
       : await callOpenAI(openaiKey as string, snapshot);
     provider = out.provider;
     model = out.model;
-    if (!out.text) throw new Error("empty_ai_response");
-    parsed = JSON.parse(out.text);
+    if (!out.text) throw new Error("invalid_ai_response");
+    review = parseAndValidateAiReview(out.text);
   } catch (_e) {
     await supabase.rpc("cockpit_fail_ai_case_review", {
       p_review_id: reviewId,
       p_error_code: "invalid_ai_response",
-      p_error_message: "ai generation/parse failed",
+      p_error_message: "ai generation/validation failed",
     });
     return jsonResponse({ ok: false, error: "invalid_ai_response", review_id: reviewId }, 502);
   }
 
-  // 5) Store result.
+  // 5) Store validated result.
   const stored = await supabase.rpc("cockpit_store_ai_case_review_result", {
     p_review_id: reviewId,
-    p_summary_ar: parsed.summary_ar ?? null,
-    p_summary_de: parsed.summary_de ?? null,
-    p_acquisition_score:
-      typeof parsed.acquisition_score === "number" ? parsed.acquisition_score : null,
-    p_priority: parsed.priority ?? null,
-    p_reasoning_ar: parsed.reasoning_ar ?? null,
-    p_risk_flags: parsed.risk_flags ?? [],
-    p_recommended_next_action: parsed.recommended_next_action ?? null,
-    p_confidence: parsed.confidence ?? null,
+    p_summary_ar: review.summary_ar,
+    p_summary_de: review.summary_de,
+    p_acquisition_score: review.acquisition_score,
+    p_priority: review.priority,
+    p_reasoning_ar: review.reasoning_ar,
+    p_risk_flags: review.risk_flags,
+    p_recommended_next_action: review.recommended_next_action,
+    p_confidence: review.confidence,
     p_model_provider: provider,
     p_model_name: model,
   });
