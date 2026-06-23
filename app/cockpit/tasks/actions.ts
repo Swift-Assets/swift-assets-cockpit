@@ -54,6 +54,7 @@ export interface CreateTaskInput {
   description?: string;
   due_at?: string; // YYYY-MM-DD
   related_kind?: string;
+  related_id?: string;
   related_label?: string;
   source_view?: string;
 }
@@ -76,6 +77,10 @@ export async function createTaskAction(
   const iso = optionalDueIso(input.due_at ?? "");
   if (iso === "invalid") return { ok: false, error: "Ungültiges Datum." };
 
+  const relatedId = (input.related_id ?? "").trim();
+  if (relatedId && !isUuid(relatedId))
+    return { ok: false, error: "Ungültige Eingabe." };
+
   const description = (input.description ?? "").trim();
   const relatedLabel = (input.related_label ?? "").trim();
   const sourceView = (input.source_view ?? "").trim();
@@ -88,7 +93,7 @@ export async function createTaskAction(
     p_priority: input.priority,
     p_assigned_to: null,
     p_related_kind: relatedKind.length > 0 ? relatedKind : null,
-    p_related_id: null,
+    p_related_id: relatedId.length > 0 ? relatedId : null,
     p_related_label: relatedLabel.length > 0 ? relatedLabel : null,
     p_source_view: sourceView.length > 0 ? sourceView : null,
     p_due_at: iso,

@@ -1,4 +1,5 @@
 import { StatusBadge } from "@/components/cockpit/status-badge";
+import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
 import type { SystemHealthCheck } from "@/lib/cockpit/operations.queries";
 
 function formatDateTime(value: string | null): string {
@@ -51,7 +52,14 @@ function DetailsMetrics({
  * Dense, fully-visible list of system health checks. Important numbers (message
  * + details metrics) stay visible by default — nothing important is hidden.
  */
-export function SystemHealthList({ checks }: { checks: SystemHealthCheck[] }) {
+export function SystemHealthList({
+  checks,
+  showTaskAction = false,
+}: {
+  checks: SystemHealthCheck[];
+  /** When true, red/yellow checks show a one-click "create task" button. */
+  showTaskAction?: boolean;
+}) {
   if (checks.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">Keine Checks vorhanden.</p>
@@ -59,22 +67,43 @@ export function SystemHealthList({ checks }: { checks: SystemHealthCheck[] }) {
   }
   return (
     <ul className="divide-y divide-border">
-      {checks.map((c) => (
-        <li key={c.check_key} className="space-y-1 py-3 first:pt-0 last:pb-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium">{c.title ?? c.check_key}</span>
-            <StatusBadge status={c.status} />
-          </div>
-          {c.message ? (
-            <p className="text-sm text-muted-foreground">{c.message}</p>
-          ) : null}
-          <DetailsMetrics details={c.details} />
-          <p className="text-[11px] text-muted-foreground">
-            Zuletzt geprüft: {formatDateTime(c.last_checked_at)} · Gruppe:{" "}
-            {c.check_group ?? "—"}
-          </p>
-        </li>
-      ))}
+      {checks.map((c) => {
+        const actionable = c.status === "red" || c.status === "yellow";
+        // data-related checks map to data_quality, others to system_issue.
+        const dataGroup =
+          c.check_group === "enrichment" ||
+          c.check_group === "ingestion" ||
+          c.check_group === "retention";
+        return (
+          <li key={c.check_key} className="space-y-1 py-3 first:pt-0 last:pb-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{c.title ?? c.check_key}</span>
+              <span className="flex shrink-0 items-center gap-2">
+                <StatusBadge status={c.status} />
+                {showTaskAction && actionable ? (
+                  <CreateTaskFromContextButton
+                    title={`${dataGroup ? "Datenqualität prüfen" : "System prüfen"}: ${c.title ?? c.check_key}`}
+                    description={c.message ?? undefined}
+                    taskType={dataGroup ? "data_quality" : "system_issue"}
+                    priority={c.status === "red" ? "urgent" : "high"}
+                    relatedKind={dataGroup ? "data_quality" : "system"}
+                    relatedLabel={c.check_key}
+                    sourceView="v_cockpit_system_health"
+                  />
+                ) : null}
+              </span>
+            </div>
+            {c.message ? (
+              <p className="text-sm text-muted-foreground">{c.message}</p>
+            ) : null}
+            <DetailsMetrics details={c.details} />
+            <p className="text-[11px] text-muted-foreground">
+              Zuletzt geprüft: {formatDateTime(c.last_checked_at)} · Gruppe:{" "}
+              {c.check_group ?? "—"}
+            </p>
+          </li>
+        );
+      })}
     </ul>
   );
 }

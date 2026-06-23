@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/cockpit/dashboard-card";
 import { StatusBadge, type TrafficStatus } from "@/components/cockpit/status-badge";
 import { SystemHealthList } from "@/components/cockpit/system-health-list";
+import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
 import {
   getDashboardData,
   type CoverageSummary,
@@ -101,13 +102,40 @@ export default async function DashboardPage() {
     (c) => c.status === "yellow",
   ).length;
 
-  // Operator attention items (informational only).
-  const attention: { label: string; status: TrafficStatus }[] = [];
+  const priorityFromStatus = (s: TrafficStatus): "urgent" | "high" | "medium" =>
+    s === "red" ? "urgent" : s === "yellow" ? "high" : "medium";
+
+  // Operator attention items. Items with `task` offer a one-click "create task".
+  // Items that already refer to tasks intentionally have no task button.
+  interface AttentionTask {
+    title: string;
+    description?: string;
+    taskType: string;
+    priority: string;
+    relatedKind: string;
+    sourceView: string;
+    relatedLabel?: string;
+  }
+  const attention: {
+    label: string;
+    status: TrafficStatus;
+    task?: AttentionTask;
+  }[] = [];
+
   for (const c of systemHealth.checks) {
     if (c.status === "red" || c.status === "yellow") {
       attention.push({
         label: `${c.title ?? c.check_key}: ${c.message ?? c.status}`,
         status: c.status,
+        task: {
+          title: `System prüfen: ${c.title ?? c.check_key}`,
+          description: c.message ?? undefined,
+          taskType: "system_issue",
+          priority: priorityFromStatus(c.status),
+          relatedKind: "system",
+          sourceView: "v_cockpit_system_health",
+          relatedLabel: c.check_key,
+        },
       });
     }
   }
@@ -115,25 +143,46 @@ export default async function DashboardPage() {
     attention.push({
       label: `Daten-Ingestion: letzter Lauf ${formatDate(ops.ingestion.runDate)} (${ops.ingestion.runStatus ?? "—"})`,
       status: ops.ingestion.status,
+      task: {
+        title: "Datenqualität prüfen: Daten-Ingestion",
+        taskType: "data_quality",
+        priority: priorityFromStatus(ops.ingestion.status),
+        relatedKind: "data_quality",
+        sourceView: "v_daily_run_log",
+        relatedLabel: "ingestion_freshness",
+      },
     });
   }
   if (ops.enrichment.available && ops.enrichment.failed > 0) {
     attention.push({
       label: `Enrichment Dead-Letter: ${ops.enrichment.failed}`,
       status: "yellow",
+      task: {
+        title: "Datenqualität prüfen: Enrichment Dead-Letter",
+        taskType: "data_quality",
+        priority: "high",
+        relatedKind: "data_quality",
+        sourceView: "v_cockpit_enrichment_jobs",
+        relatedLabel: "enrichment_dead_letter",
+      },
     });
   }
   if (watchlist.available && watchlist.overdue > 0) {
     attention.push({
       label: `Überfällige Follow-ups: ${watchlist.overdue}`,
       status: "yellow",
+      task: {
+        title: "Follow-up prüfen: Watchlist überfällig",
+        taskType: "follow_up",
+        priority: "high",
+        relatedKind: "watchlist",
+        sourceView: "v_cockpit_my_watchlist",
+      },
     });
   }
+  // These refer to tasks already — no create-task button (avoid duplication).
   if (tasks.available && tasks.overdue > 0) {
-    attention.push({
-      label: `Überfällige Aufgaben: ${tasks.overdue}`,
-      status: "red",
-    });
+    attention.push({ label: `Überfällige Aufgaben: ${tasks.overdue}`, status: "red" });
   }
   if (tasks.available && tasks.highOrUrgent > 0) {
     attention.push({
@@ -227,7 +276,20 @@ export default async function DashboardPage() {
               {attention.map((a, i) => (
                 <li key={i} className="flex items-center justify-between gap-3">
                   <span className="min-w-0">{a.label}</span>
-                  <StatusBadge status={a.status} />
+                  <span className="flex shrink-0 items-center gap-2">
+                    <StatusBadge status={a.status} />
+                    {a.task ? (
+                      <CreateTaskFromContextButton
+                        title={a.task.title}
+                        description={a.task.description}
+                        taskType={a.task.taskType}
+                        priority={a.task.priority}
+                        relatedKind={a.task.relatedKind}
+                        relatedLabel={a.task.relatedLabel}
+                        sourceView={a.task.sourceView}
+                      />
+                    ) : null}
+                  </span>
                 </li>
               ))}
             </ul>

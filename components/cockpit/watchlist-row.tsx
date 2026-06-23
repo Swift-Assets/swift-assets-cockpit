@@ -19,6 +19,7 @@ import {
   updateNoteAction,
   updateStatusAction,
 } from "@/app/cockpit/watchlist/actions";
+import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
 
 const COLUMN_COUNT = 8;
 
@@ -174,15 +175,41 @@ export function WatchlistRow({ row }: { row: Row }) {
 
         {/* Aktionen */}
         <td className="py-3 pr-4">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled}
-            onClick={handleRemove}
-          >
-            Aus Watchlist entfernen
-          </Button>
+          <div className="flex flex-col items-start gap-1.5">
+            <CreateTaskFromContextButton
+              title={`Follow-up: ${
+                row.kind === "company"
+                  ? (row.title ?? "Firmen-Watchlist-Eintrag")
+                  : "Nachlass-Watchlist-Eintrag"
+              }`}
+              taskType="follow_up"
+              priority="medium"
+              relatedKind={
+                row.kind === "company"
+                  ? "company"
+                  : row.kind === "nachlass"
+                    ? "nachlass"
+                    : "watchlist"
+              }
+              relatedId={subjectId ?? undefined}
+              relatedLabel={
+                row.kind === "company"
+                  ? (row.title ?? "Firmen-Watchlist-Eintrag")
+                  : "Nachlass-Watchlist-Eintrag"
+              }
+              sourceView="v_cockpit_my_watchlist"
+              label="Follow-up erstellen"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={handleRemove}
+            >
+              Aus Watchlist entfernen
+            </Button>
+          </div>
         </td>
       </tr>
 

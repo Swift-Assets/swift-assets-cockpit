@@ -5,7 +5,7 @@ import {
   getSystemHealth,
   isSafeGithubRunUrl,
 } from "@/lib/cockpit/operations.queries";
-import { StatusBadge } from "@/components/cockpit/status-badge";
+import { SystemHealthList } from "@/components/cockpit/system-health-list";
 
 export const dynamic = "force-dynamic";
 
@@ -214,27 +214,7 @@ export default async function OperationsPage() {
           }
         >
           {systemHealth.available ? (
-            <ul className="space-y-2 text-sm">
-              {systemHealth.checks.map((c) => (
-                <li key={c.check_key} className="space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate">
-                      <span className="font-medium">
-                        {c.title ?? c.check_key}
-                      </span>
-                      {c.message ? (
-                        <span className="text-muted-foreground">
-                          {" "}
-                          — {c.message}
-                        </span>
-                      ) : null}
-                    </span>
-                    <StatusBadge status={c.status} />
-                  </div>
-                  <DetailsView details={c.details} />
-                </li>
-              ))}
-            </ul>
+            <SystemHealthList checks={systemHealth.checks} showTaskAction />
           ) : null}
         </DashboardCard>
 
@@ -261,33 +241,6 @@ export default async function OperationsPage() {
  * list. Defensive: only primitive values (string/number/boolean) are rendered,
  * so nested objects/arrays can never be dumped into the UI.
  */
-function DetailsView({
-  details,
-}: {
-  details: Record<string, string | number | boolean | null> | null;
-}) {
-  if (!details) return null;
-  const entries = Object.entries(details).filter(
-    ([, v]) =>
-      typeof v === "string" || typeof v === "number" || typeof v === "boolean",
-  );
-  if (entries.length === 0) return null;
-
-  return (
-    <details className="text-xs text-muted-foreground">
-      <summary className="cursor-pointer select-none">Details</summary>
-      <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5">
-        {entries.map(([key, value]) => (
-          <div key={key} className="flex items-center justify-between gap-2">
-            <dt className="truncate">{key}</dt>
-            <dd className="font-medium tabular-nums">{String(value)}</dd>
-          </div>
-        ))}
-      </dl>
-    </details>
-  );
-}
-
 function Metric({
   label,
   value,
