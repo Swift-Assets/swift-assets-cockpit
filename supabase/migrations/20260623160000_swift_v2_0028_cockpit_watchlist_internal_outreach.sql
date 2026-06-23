@@ -313,6 +313,44 @@ end;
 $$;
 revoke all on function swift_v2._cockpit_outreach_event(uuid,text,text,jsonb) from public;
 
+-- Loads a draft and enforces access: caller must be an active cockpit user, and
+-- Nachlass drafts require nachlass_authorized. Returns the draft row so callers
+-- reuse it instead of re-selecting without an authorization check.
+create or replace function swift_v2._cockpit_outreach_require_draft_access(
+    p_draft_id uuid
+) returns swift_v2.cockpit_outreach_drafts
+language plpgsql security definer
+set search_path = swift_v2, public, pg_catalog
+as $$
+declare
+    v_uid   uuid := (select auth.uid());
+    v_draft swift_v2.cockpit_outreach_drafts%rowtype;
+begin
+    if v_uid is null then raise exception 'not_authenticated'; end if;
+
+    select * into v_draft from swift_v2.cockpit_outreach_drafts where draft_id = p_draft_id;
+    if v_draft.draft_id is null then raise exception 'draft_not_found'; end if;
+
+    if not exists (
+        select 1 from swift_v2.cockpit_user_profiles p
+        where p.user_id = v_uid and p.is_active
+    ) then
+        raise exception 'no_active_cockpit_profile';
+    end if;
+
+    if v_draft.watch_kind = 'nachlass'
+       and not exists (
+           select 1 from swift_v2.cockpit_user_profiles p
+           where p.user_id = v_uid and p.is_active and p.nachlass_authorized
+       ) then
+        raise exception 'nachlass_not_authorized';
+    end if;
+
+    return v_draft;
+end;
+$$;
+revoke all on function swift_v2._cockpit_outreach_require_draft_access(uuid) from public;
+
 -- Builds a safe German outreach subject + body. Returns jsonb {subject, body}.
 create or replace function swift_v2._cockpit_build_outreach_template(
     p_kind text, p_label text, p_court text, p_aktenzeichen text, p_admin_name text
@@ -415,8 +453,8 @@ declare
     v_role text := swift_v2._cockpit_writer_role();
     v_old  swift_v2.cockpit_outreach_drafts%rowtype;
 begin
-    select * into v_old from swift_v2.cockpit_outreach_drafts where draft_id = p_draft_id;
-    if v_old.draft_id is null then raise exception 'draft_not_found'; end if;
+    -- writer role (above) + draft access incl. Nachlass authorization
+    v_old := swift_v2._cockpit_outreach_require_draft_access(p_draft_id);
 
     if p_status is not null and p_status not in ('draft','ready','archived','sent_external_later') then
         raise exception 'invalid_status';
@@ -458,10 +496,9 @@ create or replace function swift_v2.cockpit_archive_outreach_draft(
 as $$
 declare
     v_role text := swift_v2._cockpit_writer_role();
-    v_old  text;
 begin
-    select status into v_old from swift_v2.cockpit_outreach_drafts where draft_id = p_draft_id;
-    if v_old is null then raise exception 'draft_not_found'; end if;
+    -- writer role (above) + draft access incl. Nachlass authorization
+    perform swift_v2._cockpit_outreach_require_draft_access(p_draft_id);
 
     update swift_v2.cockpit_outreach_drafts
        set status = 'archived', archived_at = now(), updated_by = (select auth.uid()), updated_at = now()
