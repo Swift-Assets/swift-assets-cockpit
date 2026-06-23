@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getMyTasks, summarizeTasks, type TaskRow } from "@/lib/cockpit/tasks.queries";
+import { TaskCreateForm } from "@/components/cockpit/task-create-form";
+import { TaskRowActions } from "@/components/cockpit/task-row-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +66,7 @@ function TaskTable({ rows }: { rows: TaskRow[] }) {
             <th className="py-2 pr-4 font-medium">Zugewiesen</th>
             <th className="py-2 pr-4 font-medium">Bezug</th>
             <th className="py-2 pr-4 font-medium">Aktualisiert</th>
+            <th className="py-2 pr-4 font-medium">Aktionen</th>
           </tr>
         </thead>
         <tbody>
@@ -106,6 +109,9 @@ function TaskTable({ rows }: { rows: TaskRow[] }) {
               <td className="py-2 pr-4 text-muted-foreground">
                 {formatDate(t.updated_at)}
               </td>
+              <td className="py-2 pr-4">
+                <TaskRowActions taskId={t.task_id} status={t.status} />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -147,6 +153,8 @@ export default async function TasksPage() {
         </Card>
       ) : (
         <>
+          <TaskCreateForm />
+
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MiniStat label="Offen gesamt" value={summary.openTotal} />
             <MiniStat label="Überfällig" value={summary.overdue} emphasize={summary.overdue > 0} />

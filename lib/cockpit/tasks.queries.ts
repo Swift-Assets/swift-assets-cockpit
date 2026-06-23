@@ -1,39 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import type { TaskRow } from "@/lib/cockpit/tasks";
 
-export type TaskDueBucket =
-  | "overdue"
-  | "today"
-  | "tomorrow"
-  | "upcoming"
-  | "no_due_date";
-
-/** One row of swift_v2.v_cockpit_my_tasks — safe internal task fields only. */
-export interface TaskRow {
-  task_id: string;
-  title: string | null;
-  description: string | null;
-  task_type: string | null;
-  priority: string | null;
-  status: string | null;
-  assigned_to: string | null;
-  assigned_to_name: string | null;
-  assigned_to_email: string | null;
-  created_by: string | null;
-  created_by_name: string | null;
-  created_by_email: string | null;
-  related_kind: string | null;
-  related_id: string | null;
-  related_label: string | null;
-  source_view: string | null;
-  due_at: string | null;
-  completed_at: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  age_days: number | null;
-  due_bucket: TaskDueBucket | null;
-  event_count: number | null;
-  latest_event_at: string | null;
-}
+export type { TaskRow, TaskDueBucket } from "@/lib/cockpit/tasks";
 
 export interface TasksResult {
   available: boolean;
