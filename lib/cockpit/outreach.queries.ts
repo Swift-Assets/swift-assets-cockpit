@@ -52,3 +52,24 @@ export async function getOutreachDrafts(): Promise<OutreachDraftsResult> {
     return { available: false, rows: [] };
   }
 }
+
+/** Key identifying a draft's source watch item. */
+export function outreachDraftKey(
+  watchKind: string | null,
+  watchId: string | null,
+): string {
+  return `${watchKind ?? ""}:${watchId ?? ""}`;
+}
+
+/**
+ * Keys of watch items that already have a NON-archived draft. Used to disable
+ * the "create draft" button (lightweight duplicate prevention).
+ */
+export function activeOutreachDraftKeys(rows: OutreachDraft[]): string[] {
+  const out = new Set<string>();
+  for (const d of rows) {
+    if (d.status === "archived") continue;
+    out.add(outreachDraftKey(d.watch_kind, d.watch_id));
+  }
+  return [...out];
+}

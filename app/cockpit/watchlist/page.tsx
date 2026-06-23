@@ -8,9 +8,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
+import { WatchlistInternalTable } from "@/components/cockpit/watchlist-internal-table";
 import { getMyWatchlist } from "@/lib/cockpit/watchlist.queries";
+import { getInternalWatchlist } from "@/lib/cockpit/watchlist-internal.queries";
 import { getMyTasks } from "@/lib/cockpit/tasks.queries";
 import { openTaskContextKeys } from "@/lib/cockpit/tasks";
+import {
+  activeOutreachDraftKeys,
+  getOutreachDrafts,
+} from "@/lib/cockpit/outreach.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +34,14 @@ export const dynamic = "force-dynamic";
  * shown here.
  */
 export default async function WatchlistPage() {
-  const [{ rows, error }, tasksResult] = await Promise.all([
+  const [{ rows, error }, tasksResult, internal, drafts] = await Promise.all([
     getMyWatchlist(),
     getMyTasks(),
+    getInternalWatchlist(),
+    getOutreachDrafts(),
   ]);
   const openTaskKeys = openTaskContextKeys(tasksResult.rows);
+  const draftKeys = activeOutreachDraftKeys(drafts.rows);
 
   // Company entity_ids already on the watchlist, to mark "Bereits in Watchlist".
   const watchedCompanyIds = rows
@@ -54,9 +63,36 @@ export default async function WatchlistPage() {
 
       <WatchlistAddPanel watchedCompanyIds={watchedCompanyIds} />
 
+      {/* Internal acquisition enrichment (CORE PHASE 2) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Meine Watchlist</CardTitle>
+          <CardTitle className="text-base">Interne Akquise-Übersicht</CardTitle>
+          <CardDescription>
+            Quelle: swift_v2.v_cockpit_watchlist_internal — Phase, Verwalter,
+            Outreach-Bereitschaft und Datenlücken. Anfrage-Entwürfe ohne Versand.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!internal.available ? (
+            <p className="text-sm text-status-yellow">
+              Interne Watchlist-Erweiterung nicht verfügbar.
+            </p>
+          ) : internal.rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Keine internen Einträge vorhanden.
+            </p>
+          ) : (
+            <WatchlistInternalTable
+              rows={internal.rows}
+              activeDraftKeys={draftKeys}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Watchlist verwalten</CardTitle>
           <CardDescription>
             Quelle: swift_v2.v_cockpit_my_watchlist (RLS-geschützt, nur eigene
             Einträge). Änderungen erfolgen ausschließlich über gesicherte RPCs.
