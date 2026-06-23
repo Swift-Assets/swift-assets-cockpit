@@ -50,6 +50,52 @@ export interface DataCoverage {
   byPhase: LabelCount[];
   topBundeslaender: LabelCount[];
   generatedAt: string | null;
+  // Rich internal summary from v_cockpit_data_coverage_summary (Phase 6D).
+  // null until migration 0025 is applied; UI falls back to the public stats.
+  summary: CoverageSummary | null;
+}
+
+/**
+ * One row of swift_v2.v_cockpit_data_coverage_summary — safe aggregates only.
+ * All fields are counts/rates/timestamps/status labels; never PII.
+ */
+export interface CoverageSummary {
+  generated_at: string | null;
+  entities_total: number | null;
+  entities_company: number | null;
+  entities_natural_person: number | null;
+  entities_unknown_type: number | null;
+  entities_sensitivity_normal: number | null;
+  entities_restricted: number | null;
+  company_public_eligible: number | null;
+  entities_with_source_links: number | null;
+  entities_missing_links: number | null;
+  company_cases_total: number | null;
+  portal_candidate_cases_total: number | null;
+  uncertain_cases_total: number | null;
+  announcements_total: number | null;
+  announcements_latest_date: string | null;
+  announcements_latest_scraped_at: string | null;
+  announcements_linked: number | null;
+  announcements_unlinked: number | null;
+  announcements_company: number | null;
+  announcements_natural_person: number | null;
+  hr_records_total: number | null;
+  hr_entities_verified: number | null;
+  hr_companies_missing: number | null;
+  hr_latest_fetched_at: string | null;
+  hr_verification_rate: number | null;
+  bundesanzeiger_status: string | null;
+  jobs_total: number | null;
+  jobs_pending: number | null;
+  jobs_running: number | null;
+  jobs_done: number | null;
+  jobs_dead_letter: number | null;
+  jobs_latest_created_at: string | null;
+  jobs_latest_updated_at: string | null;
+  portal_candidates_ready: number | null;
+  portal_candidates_review: number | null;
+  natural_person_normal_sensitivity: number | null;
 }
 
 export interface DashboardData {
@@ -158,7 +204,27 @@ const EMPTY_COVERAGE: DataCoverage = {
   byPhase: [],
   topBundeslaender: [],
   generatedAt: null,
+  summary: null,
 };
+
+/**
+ * Reads the rich internal summary view (Phase 6D). Returns null if the view is
+ * absent (migration 0025 not yet applied) or on any error — the UI then falls
+ * back to the public statistics. Safe aggregates only.
+ */
+async function getCoverageSummary(): Promise<CoverageSummary | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("v_cockpit_data_coverage_summary")
+      .select("*")
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    return data[0] as CoverageSummary;
+  } catch {
+    return null;
+  }
+}
 
 function numOrNull(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -185,7 +251,7 @@ function recordToLabelCounts(v: unknown): LabelCount[] {
 async function getDataCoverage(): Promise<DataCoverage> {
   try {
     const supabase = await createClient();
-    const [companiesRes, jobsRes, statsRes] = await Promise.all([
+    const [companiesRes, jobsRes, statsRes, summary] = await Promise.all([
       supabase
         .from("v_cockpit_companies")
         .select("entity_id", { count: "exact", head: true }),
@@ -193,6 +259,7 @@ async function getDataCoverage(): Promise<DataCoverage> {
         .from("v_cockpit_enrichment_jobs")
         .select("job_id", { count: "exact", head: true }),
       supabase.from("v_public_insolvency_statistics").select("statistics").limit(1),
+      getCoverageSummary(),
     ]);
 
     const companiesTotal = companiesRes.error ? null : (companiesRes.count ?? 0);
@@ -218,6 +285,7 @@ async function getDataCoverage(): Promise<DataCoverage> {
     }
 
     const available =
+      summary !== null ||
       companiesTotal !== null ||
       enrichmentJobsTotal !== null ||
       totalCompanyInsolvencies !== null;
@@ -231,6 +299,7 @@ async function getDataCoverage(): Promise<DataCoverage> {
       byPhase,
       topBundeslaender,
       generatedAt,
+      summary,
     };
   } catch {
     return EMPTY_COVERAGE;

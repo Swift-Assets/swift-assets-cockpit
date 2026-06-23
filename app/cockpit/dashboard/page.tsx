@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/cockpit/dashboard-card";
 import { StatusBadge, type TrafficStatus } from "@/components/cockpit/status-badge";
 import { SystemHealthList } from "@/components/cockpit/system-health-list";
-import { getDashboardData } from "@/lib/cockpit/dashboard.queries";
+import {
+  getDashboardData,
+  type CoverageSummary,
+} from "@/lib/cockpit/dashboard.queries";
 import {
   getOperationsData,
   getSystemHealth,
@@ -402,12 +405,15 @@ export default async function DashboardPage() {
               Datenabdeckung / Quellenqualität
             </CardTitle>
             <CardDescription>
-              Quellen: v_public_insolvency_statistics (firmenbezogen),
-              v_cockpit_companies, v_cockpit_enrichment_jobs.
+              {coverage.summary
+                ? "Quelle: v_cockpit_data_coverage_summary (intern, sichere Aggregate)."
+                : "Quellen: v_public_insolvency_statistics (firmenbezogen), v_cockpit_companies, v_cockpit_enrichment_jobs."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            {coverage.available ? (
+            {coverage.summary ? (
+              <CoverageSummaryView summary={coverage.summary} />
+            ) : coverage.available ? (
               <>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                   <Metric
@@ -492,6 +498,114 @@ export default async function DashboardPage() {
           description="Noch nicht verbunden — benötigt cockpit_tasks (zukünftige Migration)."
         />
       </div>
+    </div>
+  );
+}
+
+function CoverageGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-1 font-medium">{title}</p>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5">{children}</dl>
+    </div>
+  );
+}
+
+/**
+ * Dense, fully-visible render of the internal data-coverage summary. Every
+ * value is a safe aggregate (count/rate/timestamp/status label).
+ */
+function CoverageSummaryView({ summary: s }: { summary: CoverageSummary }) {
+  return (
+    <div className="space-y-4">
+      <CoverageGroup title="Entitäten">
+        <Metric label="Gesamt" value={s.entities_total ?? "—"} />
+        <Metric label="Firmen" value={s.entities_company ?? "—"} />
+        <Metric
+          label="Natürliche Personen"
+          value={s.entities_natural_person ?? "—"}
+        />
+        <Metric label="Unbekannt" value={s.entities_unknown_type ?? "—"} />
+        <Metric label="Mit Quell-Links" value={s.entities_with_source_links ?? "—"} />
+        <Metric
+          label="Ohne Links"
+          value={s.entities_missing_links ?? "—"}
+          emphasize={(s.entities_missing_links ?? 0) > 0}
+        />
+        <Metric label="Firmen öffentlich-fähig" value={s.company_public_eligible ?? "—"} />
+        <Metric label="Eingeschränkt" value={s.entities_restricted ?? "—"} />
+        <Metric label="Company-Cases" value={s.company_cases_total ?? "—"} />
+        <Metric label="Portal-Kandidaten" value={s.portal_candidate_cases_total ?? "—"} />
+        <Metric label="Unsichere Fälle" value={s.uncertain_cases_total ?? "—"} />
+      </CoverageGroup>
+
+      <CoverageGroup title="Bekanntmachungen">
+        <Metric label="Gesamt" value={s.announcements_total ?? "—"} />
+        <Metric label="Verknüpft" value={s.announcements_linked ?? "—"} />
+        <Metric
+          label="Unverknüpft"
+          value={s.announcements_unlinked ?? "—"}
+          emphasize={(s.announcements_unlinked ?? 0) > 0}
+        />
+        <Metric label="Firma" value={s.announcements_company ?? "—"} />
+        <Metric label="Natürl. Person" value={s.announcements_natural_person ?? "—"} />
+        <Metric label="Neueste" value={formatDate(s.announcements_latest_date)} />
+        <Metric
+          label="Zuletzt gescraped"
+          value={formatDate(s.announcements_latest_scraped_at)}
+        />
+      </CoverageGroup>
+
+      <CoverageGroup title="Handelsregister">
+        <Metric label="Datensätze" value={s.hr_records_total ?? "—"} />
+        <Metric label="Verifizierte Firmen" value={s.hr_entities_verified ?? "—"} />
+        <Metric
+          label="Fehlende Firmen"
+          value={s.hr_companies_missing ?? "—"}
+          emphasize={(s.hr_companies_missing ?? 0) > 0}
+        />
+        <Metric
+          label="Verifizierungsquote"
+          value={s.hr_verification_rate !== null ? `${s.hr_verification_rate}%` : "—"}
+        />
+        <Metric label="Zuletzt geholt" value={formatDate(s.hr_latest_fetched_at)} />
+      </CoverageGroup>
+
+      <CoverageGroup title="Enrichment-Jobs">
+        <Metric label="Gesamt" value={s.jobs_total ?? "—"} />
+        <Metric label="Offen" value={s.jobs_pending ?? "—"} />
+        <Metric label="Laufend" value={s.jobs_running ?? "—"} />
+        <Metric label="Erledigt" value={s.jobs_done ?? "—"} />
+        <Metric
+          label="Dead-Letter"
+          value={s.jobs_dead_letter ?? "—"}
+          emphasize={(s.jobs_dead_letter ?? 0) > 0}
+        />
+        <Metric label="Zuletzt aktualisiert" value={formatDate(s.jobs_latest_updated_at)} />
+      </CoverageGroup>
+
+      <CoverageGroup title="Portal-Bereitschaft & Bundesanzeiger">
+        <Metric label="Portal bereit" value={s.portal_candidates_ready ?? "—"} />
+        <Metric label="Manuelle Prüfung" value={s.portal_candidates_review ?? "—"} />
+        <Metric
+          label="Natürl. Pers. (normal-Sens.)"
+          value={s.natural_person_normal_sensitivity ?? "—"}
+          emphasize={(s.natural_person_normal_sensitivity ?? 0) > 0}
+        />
+        <Metric label="Bundesanzeiger" value={s.bundesanzeiger_status ?? "—"} />
+      </CoverageGroup>
+
+      <p className="text-xs text-muted-foreground">
+        Stand: {formatDateTime(s.generated_at)}. Interne Aggregate aus
+        v_cockpit_data_coverage_summary — nur Kennzahlen, keine personenbezogenen
+        Inhalte.
+      </p>
     </div>
   );
 }
