@@ -36,10 +36,27 @@ export interface CountKpi {
   value: number | null;
 }
 
+export interface LabelCount {
+  label: string;
+  count: number;
+}
+
+export interface DataCoverage {
+  available: boolean;
+  companiesTotal: number | null;
+  enrichmentJobsTotal: number | null;
+  totalCompanyInsolvencies: number | null;
+  handelsregisterVerificationRate: number | null;
+  byPhase: LabelCount[];
+  topBundeslaender: LabelCount[];
+  generatedAt: string | null;
+}
+
 export interface DashboardData {
   watchlist: WatchlistKpis;
   companyActivity: CompanyActivityKpis;
   reviewQueue: CountKpi;
+  coverage: DataCoverage;
 }
 
 const EMPTY_WATCHLIST: WatchlistKpis = {
@@ -132,11 +149,100 @@ async function getReviewQueue(): Promise<CountKpi> {
   }
 }
 
+const EMPTY_COVERAGE: DataCoverage = {
+  available: false,
+  companiesTotal: null,
+  enrichmentJobsTotal: null,
+  totalCompanyInsolvencies: null,
+  handelsregisterVerificationRate: null,
+  byPhase: [],
+  topBundeslaender: [],
+  generatedAt: null,
+};
+
+function numOrNull(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** Converts a { label: count } object into a count-desc sorted LabelCount[]. */
+function recordToLabelCounts(v: unknown): LabelCount[] {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return [];
+  const out: LabelCount[] = [];
+  for (const [label, count] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof count === "number" && Number.isFinite(count)) {
+      out.push({ label, count });
+    }
+  }
+  return out.sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Data coverage / source quality from safe sources only:
+ *  - head counts of v_cockpit_companies and v_cockpit_enrichment_jobs
+ *  - the public-safe company-only aggregate v_public_insolvency_statistics
+ * No raw/sensitive tables, no PII. Degrades to a placeholder on failure.
+ */
+async function getDataCoverage(): Promise<DataCoverage> {
+  try {
+    const supabase = await createClient();
+    const [companiesRes, jobsRes, statsRes] = await Promise.all([
+      supabase
+        .from("v_cockpit_companies")
+        .select("entity_id", { count: "exact", head: true }),
+      supabase
+        .from("v_cockpit_enrichment_jobs")
+        .select("job_id", { count: "exact", head: true }),
+      supabase.from("v_public_insolvency_statistics").select("statistics").limit(1),
+    ]);
+
+    const companiesTotal = companiesRes.error ? null : (companiesRes.count ?? 0);
+    const enrichmentJobsTotal = jobsRes.error ? null : (jobsRes.count ?? 0);
+
+    let totalCompanyInsolvencies: number | null = null;
+    let handelsregisterVerificationRate: number | null = null;
+    let byPhase: LabelCount[] = [];
+    let topBundeslaender: LabelCount[] = [];
+    let generatedAt: string | null = null;
+
+    if (!statsRes.error && statsRes.data?.[0]) {
+      const s =
+        ((statsRes.data[0] as { statistics?: Record<string, unknown> })
+          .statistics ?? {}) as Record<string, unknown>;
+      totalCompanyInsolvencies = numOrNull(s.total_company_insolvencies);
+      handelsregisterVerificationRate = numOrNull(
+        s.handelsregister_verification_rate,
+      );
+      byPhase = recordToLabelCounts(s.by_phase);
+      topBundeslaender = recordToLabelCounts(s.by_bundesland).slice(0, 6);
+      generatedAt = typeof s.generated_at === "string" ? s.generated_at : null;
+    }
+
+    const available =
+      companiesTotal !== null ||
+      enrichmentJobsTotal !== null ||
+      totalCompanyInsolvencies !== null;
+
+    return {
+      available,
+      companiesTotal,
+      enrichmentJobsTotal,
+      totalCompanyInsolvencies,
+      handelsregisterVerificationRate,
+      byPhase,
+      topBundeslaender,
+      generatedAt,
+    };
+  } catch {
+    return EMPTY_COVERAGE;
+  }
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
-  const [watchlist, companyActivity, reviewQueue] = await Promise.all([
+  const [watchlist, companyActivity, reviewQueue, coverage] = await Promise.all([
     getWatchlistKpis(),
     getCompanyActivity(),
     getReviewQueue(),
+    getDataCoverage(),
   ]);
-  return { watchlist, companyActivity, reviewQueue };
+  return { watchlist, companyActivity, reviewQueue, coverage };
 }
