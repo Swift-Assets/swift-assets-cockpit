@@ -38,7 +38,7 @@ create table if not exists swift_v2.cockpit_tasks (
     status         text not null default 'open'
                      check (status in ('open','in_progress','waiting','done','archived')),
     assigned_to    uuid references auth.users(id),
-    created_by     uuid not null default auth.uid(),
+    created_by     uuid not null default auth.uid() references auth.users(id),
     related_kind   text
                      check (related_kind is null or related_kind in
                        ('company','nachlass','watchlist','entity','system',
@@ -219,6 +219,10 @@ declare
 begin
     select * into v_old from swift_v2.cockpit_tasks where task_id = p_task_id;
     if v_old.task_id is null then raise exception 'task_not_found'; end if;
+
+    if p_set_title and (p_title is null or length(btrim(p_title)) = 0) then
+        raise exception 'title_required';
+    end if;
 
     perform swift_v2._cockpit_task_validate(
         case when p_set_task_type then p_task_type end,
