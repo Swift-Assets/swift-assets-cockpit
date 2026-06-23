@@ -17,6 +17,10 @@ import {
   activeOutreachDraftKeys,
   getOutreachDrafts,
 } from "@/lib/cockpit/outreach.queries";
+import {
+  activeAiReviewByWatchKey,
+  getAiCaseReviews,
+} from "@/lib/cockpit/ai-reviews.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +35,16 @@ export const dynamic = "force-dynamic";
  * non-sensitive columns; Nachlass uses safe labels only.
  */
 export default async function WatchlistPage() {
-  const [basic, tasksResult, internal, drafts] = await Promise.all([
+  const [basic, tasksResult, internal, drafts, aiReviews] = await Promise.all([
     getMyWatchlist(),
     getMyTasks(),
     getInternalWatchlist(),
     getOutreachDrafts(),
+    getAiCaseReviews(),
   ]);
   const openTaskKeys = openTaskContextKeys(tasksResult.rows);
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
+  const aiReviewByKey = activeAiReviewByWatchKey(aiReviews.rows);
 
   // Company entity_ids already on the watchlist, to mark "Bereits in Watchlist".
   const watchedCompanyIds = (
@@ -86,6 +92,7 @@ export default async function WatchlistPage() {
                 rows={internal.rows}
                 openTaskKeys={openTaskKeys}
                 activeDraftKeys={draftKeys}
+                aiReviewByKey={aiReviewByKey}
               />
             )
           ) : basic.error ? (

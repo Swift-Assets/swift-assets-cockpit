@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { WatchlistAcquisitionRow } from "@/components/cockpit/watchlist-acquisition-row";
 import type { InternalWatchlistRow } from "@/lib/cockpit/watchlist-internal.queries";
+import type { AiCaseReviewRow } from "@/lib/cockpit/ai-reviews.queries";
 
 type TypeFilter = "all" | "company" | "nachlass";
 type StatusFilter = "all" | "watching" | "pursuing" | "passed";
@@ -139,10 +140,12 @@ export function WatchlistAcquisitionFilteredTable({
   rows,
   openTaskKeys = [],
   activeDraftKeys = [],
+  aiReviewByKey = {},
 }: {
   rows: InternalWatchlistRow[];
   openTaskKeys?: string[];
   activeDraftKeys?: string[];
+  aiReviewByKey?: Record<string, AiCaseReviewRow>;
 }) {
   const draftKeySet = useMemo(() => new Set(activeDraftKeys), [activeDraftKeys]);
 
@@ -457,6 +460,7 @@ export function WatchlistAcquisitionFilteredTable({
                   row={row}
                   openTaskKeys={openTaskKeys}
                   activeDraftKeys={activeDraftKeys}
+                  aiReview={aiReviewByKey[`${row.kind}:${row.watch_id}`] ?? null}
                 />
               ))}
             </tbody>

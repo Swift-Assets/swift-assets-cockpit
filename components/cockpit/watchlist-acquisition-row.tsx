@@ -19,6 +19,8 @@ import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-fr
 import { OutreachCreateButton } from "@/components/cockpit/outreach-create-button";
 import { hasOpenTaskForContext } from "@/lib/cockpit/tasks";
 import type { InternalWatchlistRow } from "@/lib/cockpit/watchlist-internal.queries";
+import { AiReviewSection } from "@/components/cockpit/ai-review-section";
+import type { AiCaseReviewRow } from "@/lib/cockpit/ai-reviews.queries";
 
 export const ACQUISITION_COLUMN_COUNT = 11;
 
@@ -73,10 +75,12 @@ export function WatchlistAcquisitionRow({
   row,
   openTaskKeys = [],
   activeDraftKeys = [],
+  aiReview = null,
 }: {
   row: InternalWatchlistRow;
   openTaskKeys?: string[];
   activeDraftKeys?: string[];
+  aiReview?: AiCaseReviewRow | null;
 }) {
   const subjectId = row.subject_id;
   const isNachlass = row.kind === "nachlass";
@@ -159,6 +163,11 @@ export function WatchlistAcquisitionRow({
         </td>
         <td className="py-3 pr-3">
           <div className="font-medium">{label}</div>
+          {aiReview && aiReview.acquisition_score !== null ? (
+            <div className="mt-0.5">
+              <Badge variant="muted">KI {aiReview.acquisition_score}</Badge>
+            </div>
+          ) : null}
           {row.note ? (
             <div className="max-w-[16rem] truncate text-xs text-muted-foreground">
               {row.note}
@@ -381,6 +390,15 @@ export function WatchlistAcquisitionRow({
                   </Button>
                   {followUpTask}
                 </div>
+              </div>
+
+              {/* G. AI review */}
+              <div className="md:col-span-2">
+                <AiReviewSection
+                  kind={row.kind}
+                  watchId={row.watch_id}
+                  review={aiReview}
+                />
               </div>
             </div>
           </td>
