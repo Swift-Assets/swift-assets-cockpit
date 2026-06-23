@@ -12,6 +12,12 @@ import {
   updateTaskAction,
   type ActionResult,
 } from "@/app/cockpit/tasks/actions";
+import type { CockpitUser } from "@/lib/cockpit/users.queries";
+
+function userLabel(u: CockpitUser): string {
+  const name = u.display_name ?? u.email ?? "Unbekannt";
+  return u.role ? `${name} (${u.role})` : name;
+}
 
 const ACTIVE = new Set(["open", "in_progress", "waiting"]);
 
@@ -26,11 +32,17 @@ export function TaskRowActions({
   status,
   priority,
   dueAt,
+  assignedTo,
+  users,
+  usersAvailable = false,
 }: {
   taskId: string;
   status: string | null;
   priority: string | null;
   dueAt: string | null;
+  assignedTo: string | null;
+  users: CockpitUser[];
+  usersAvailable?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +118,33 @@ export function TaskRowActions({
         >
           Datum speichern
         </Button>
+        {usersAvailable ? (
+          <Select
+            aria-label="Zugewiesen an"
+            className="h-8 text-xs"
+            value={assignedTo ?? ""}
+            disabled={pending || isArchived}
+            onChange={(e) =>
+              run(() =>
+                updateTaskAction({
+                  task_id: taskId,
+                  assigned_to: e.target.value || null,
+                }),
+              )
+            }
+          >
+            <option value="">— Nicht zugewiesen —</option>
+            {users.map((u) => (
+              <option key={u.user_id} value={u.user_id}>
+                {userLabel(u)}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            Benutzerliste nicht verfügbar
+          </span>
+        )}
       </div>
 
       {/* Quick lifecycle actions */}

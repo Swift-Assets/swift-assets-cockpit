@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getMyTasks, summarizeTasks, type TaskRow } from "@/lib/cockpit/tasks.queries";
+import { getCockpitUsers, type CockpitUser } from "@/lib/cockpit/users.queries";
 import { TaskCreateForm } from "@/components/cockpit/task-create-form";
 import { TaskRowActions } from "@/components/cockpit/task-row-actions";
 
@@ -52,7 +53,15 @@ const DUE_LABEL: Record<string, string> = {
   no_due_date: "Kein Datum",
 };
 
-function TaskTable({ rows }: { rows: TaskRow[] }) {
+function TaskTable({
+  rows,
+  users,
+  usersAvailable,
+}: {
+  rows: TaskRow[];
+  users: CockpitUser[];
+  usersAvailable: boolean;
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -115,6 +124,9 @@ function TaskTable({ rows }: { rows: TaskRow[] }) {
                   status={t.status}
                   priority={t.priority}
                   dueAt={t.due_at}
+                  assignedTo={t.assigned_to}
+                  users={users}
+                  usersAvailable={usersAvailable}
                 />
               </td>
             </tr>
@@ -126,7 +138,10 @@ function TaskTable({ rows }: { rows: TaskRow[] }) {
 }
 
 export default async function TasksPage() {
-  const result = await getMyTasks();
+  const [result, usersResult] = await Promise.all([
+    getMyTasks(),
+    getCockpitUsers(),
+  ]);
   const summary = summarizeTasks(result);
 
   const active = result.rows.filter((t) => ACTIVE.has(t.status ?? ""));
@@ -180,7 +195,11 @@ export default async function TasksPage() {
                   Keine aktiven Aufgaben.
                 </p>
               ) : (
-                <TaskTable rows={active} />
+                <TaskTable
+                  rows={active}
+                  users={usersResult.rows}
+                  usersAvailable={usersResult.available}
+                />
               )}
             </CardContent>
           </Card>
@@ -195,7 +214,11 @@ export default async function TasksPage() {
                   Keine erledigten oder archivierten Aufgaben.
                 </p>
               ) : (
-                <TaskTable rows={closed} />
+                <TaskTable
+                  rows={closed}
+                  users={usersResult.rows}
+                  usersAvailable={usersResult.available}
+                />
               )}
             </CardContent>
           </Card>

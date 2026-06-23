@@ -116,6 +116,8 @@ export interface UpdateTaskInput {
   status?: string;
   /** "" clears the due date; "YYYY-MM-DD" sets it; undefined = no change. */
   due_at?: string;
+  /** "" / null unassigns; a UUID assigns; undefined = no change. */
+  assigned_to?: string | null;
 }
 
 /** Update priority / status / due date via cockpit_update_task (set-flag pattern). */
@@ -145,6 +147,14 @@ export async function updateTaskAction(
     if (iso === "invalid") return { ok: false, error: "Ungültiges Datum." };
     params.p_set_due = true;
     params.p_due_at = iso; // null clears the due date
+  }
+
+  if (input.assigned_to !== undefined) {
+    const a = input.assigned_to;
+    if (a !== null && a !== "" && !isUuid(a))
+      return { ok: false, error: "Ungültige Eingabe." };
+    params.p_set_assigned = true;
+    params.p_assigned_to = a && a.length > 0 ? a : null; // null unassigns
   }
 
   // Nothing to change.
