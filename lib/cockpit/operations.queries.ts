@@ -70,6 +70,9 @@ export interface SystemHealthCheck {
   status: TrafficStatus;
   title: string | null;
   message: string | null;
+  // Safe operational metrics only (counts / ages / status labels / booleans /
+  // timestamps). Never raw errors, payloads, or PII — enforced by the writer.
+  details: Record<string, string | number | boolean | null> | null;
   last_checked_at: string | null;
 }
 
@@ -321,7 +324,9 @@ export async function getSystemHealth(): Promise<SystemHealthKpis> {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("v_cockpit_system_health")
-      .select("check_key, check_group, status, title, message, last_checked_at")
+      .select(
+        "check_key, check_group, status, title, message, details, last_checked_at",
+      )
       .order("check_group", { ascending: true });
 
     if (error) return { available: false, status: "gray", checks: [] };

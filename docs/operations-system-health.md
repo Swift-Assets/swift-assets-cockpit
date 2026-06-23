@@ -30,6 +30,43 @@ absent.
 No PII, natural-person data, Nachlass details, raw announcement text, `report`
 jsonb, `error_message`, or company display names are read or stored.
 
+## `details` jsonb — allowed vs forbidden
+
+`details` is kept in `v_cockpit_system_health` and **is shown in the cockpit UI**
+(this is an internal operations tool and operators need the numbers). It must
+contain **safe operational metrics only**.
+
+**Allowed in `details`:**
+- `dead_letter`, `pending`, `running` counts
+- `age_days`
+- `last_status` (safe status label, e.g. `succeeded` / `failed`)
+- `overdue_count`
+- `failed_runs_24h`
+- `source_available` (boolean)
+- safe `checked_at` / timestamp values
+- safe status labels
+
+**Forbidden in `details` (never write or render):**
+- raw SQL errors
+- raw API responses
+- raw announcement text
+- `report` jsonb
+- `error_message` payloads
+- natural-person names / deceased names
+- addresses
+- birth dates
+- Aktenzeichen of natural-person cases (unless a future internal-only module
+  explicitly requires it)
+- `company_display_name`
+- emails or phone numbers
+- service_role / secrets / tokens
+
+This contract is also documented as a column comment on
+`swift_v2.cockpit_system_health_checks.details`. The writer
+(`run_data_health_check()`) only ever emits the allowed metrics; the frontend
+defensively renders **only primitive** key-value pairs from `details`, so nested
+objects/arrays can never be dumped into the UI.
+
 ## Traffic-light rollup
 
 The card status is the worst of its checks: red > yellow > green > gray. Per check:

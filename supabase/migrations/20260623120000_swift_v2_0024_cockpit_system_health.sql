@@ -47,6 +47,9 @@ create table if not exists swift_v2.cockpit_system_health_checks (
 comment on table swift_v2.cockpit_system_health_checks is
   'Phase 6B.2A: internal system/data-pipeline health snapshot. One row per check_key. Safe operational metrics only — never PII. Written by swift_v2.run_data_health_check(); read by cockpit users via v_cockpit_system_health.';
 
+comment on column swift_v2.cockpit_system_health_checks.details is
+  'SAFE operational metrics ONLY (shown in the internal cockpit UI). Allowed: counts (dead_letter/pending/running/overdue/failed_runs_24h), age_days, last_status label, source_available boolean, safe timestamps/status labels. FORBIDDEN: raw SQL errors, raw API responses, raw announcement text, report jsonb, error_message payloads, natural-person/deceased names, addresses, birth dates, natural-person Aktenzeichen, company_display_name, emails/phone numbers, service_role/secrets/tokens.';
+
 -- ---------------------------------------------------------------------------
 -- 2) RLS + grants: base table fully locked from anon/authenticated.
 --    service_role bypasses RLS (used by the scheduled writer later).
