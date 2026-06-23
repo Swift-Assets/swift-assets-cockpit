@@ -1,0 +1,211 @@
+import { createClient } from "@/lib/supabase/server";
+import type { TrafficStatus } from "@/components/cockpit/status-badge";
+
+/**
+ * Read-only Operations KPIs sourced ONLY from existing safe, RLS-gated views:
+ *  - swift_v2.v_cockpit_enrichment_jobs (authenticated SELECT; aggregate only)
+ *  - swift_v2.v_daily_run_log           (authenticated SELECT; operational, non-PII)
+ *
+ * Only aggregate counts, statuses and timestamps are read — never company names,
+ * error payloads, raw announcement text or any PII. Each group is wrapped so a
+ * missing/forbidden source degrades to `available: false` (placeholder) instead
+ * of breaking the page. No raw SQL errors are surfaced.
+ */
+
+export interface EnrichmentKpis {
+  available: boolean;
+  status: TrafficStatus;
+  total: number;
+  pending: number;
+  running: number;
+  failed: number;
+  succeeded: number;
+}
+
+export interface IngestionKpis {
+  available: boolean;
+  status: TrafficStatus;
+  runDate: string | null;
+  runStatus: string | null;
+  s1Inserted: number | null;
+  s1Failed: number | null;
+  s2Enriched: number | null;
+  s2Failed: number | null;
+  durationSeconds: number | null;
+}
+
+export interface OpsEventRow {
+  run_id: string;
+  run_date: string | null;
+  status: string | null;
+  duration_seconds: number | null;
+}
+
+export interface RecentEventsKpis {
+  available: boolean;
+  rows: OpsEventRow[];
+}
+
+export interface OperationsData {
+  enrichment: EnrichmentKpis;
+  ingestion: IngestionKpis;
+  recentEvents: RecentEventsKpis;
+}
+
+const EMPTY_ENRICHMENT: EnrichmentKpis = {
+  available: false,
+  status: "gray",
+  total: 0,
+  pending: 0,
+  running: 0,
+  failed: 0,
+  succeeded: 0,
+};
+
+// enrichment_jobs status values observed in the cockpit view.
+const STATUS_DONE = "done";
+const STATUS_DEAD_LETTER = "dead_letter";
+const STATUS_PENDING = "pending";
+const STATUS_RUNNING = "running";
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function countJobs(
+  supabase: SupabaseServerClient,
+  status?: string,
+): Promise<number | null> {
+  let query = supabase
+    .from("v_cockpit_enrichment_jobs")
+    .select("job_id", { count: "exact", head: true });
+  if (status) query = query.eq("status", status);
+  const { count, error } = await query;
+  if (error) return null;
+  return count ?? 0;
+}
+
+async function getEnrichmentKpis(): Promise<EnrichmentKpis> {
+  try {
+    const supabase = await createClient();
+    const [total, succeeded, failed, pending, running] = await Promise.all([
+      countJobs(supabase),
+      countJobs(supabase, STATUS_DONE),
+      countJobs(supabase, STATUS_DEAD_LETTER),
+      countJobs(supabase, STATUS_PENDING),
+      countJobs(supabase, STATUS_RUNNING),
+    ]);
+
+    if (total === null) return EMPTY_ENRICHMENT;
+
+    const failedCount = failed ?? 0;
+    return {
+      available: true,
+      status: failedCount > 0 ? "yellow" : "green",
+      total,
+      pending: pending ?? 0,
+      running: running ?? 0,
+      failed: failedCount,
+      succeeded: succeeded ?? 0,
+    };
+  } catch {
+    return EMPTY_ENRICHMENT;
+  }
+}
+
+function ingestionStatus(
+  runDate: string | null,
+  runStatus: string | null,
+  failedTotal: number,
+): TrafficStatus {
+  if (!runDate) return "yellow";
+  const text = (runStatus ?? "").toLowerCase();
+  if (text.includes("fail") || text.includes("error")) return "red";
+
+  // Stale if the last run is older than ~2 days.
+  const ageMs = Date.now() - new Date(runDate).getTime();
+  const stale = Number.isFinite(ageMs) && ageMs > 2 * 24 * 60 * 60 * 1000;
+
+  if (failedTotal > 0 || stale) return "yellow";
+  return "green";
+}
+
+async function getIngestionKpis(): Promise<IngestionKpis> {
+  const empty: IngestionKpis = {
+    available: false,
+    status: "gray",
+    runDate: null,
+    runStatus: null,
+    s1Inserted: null,
+    s1Failed: null,
+    s2Enriched: null,
+    s2Failed: null,
+    durationSeconds: null,
+  };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("v_daily_run_log")
+      .select(
+        "run_date, status, s1_inserted_count, s1_failed_count, s2_enriched_count, s2_failed_count, duration_seconds",
+      )
+      .order("run_date", { ascending: false, nullsFirst: false })
+      .limit(1);
+
+    if (error) return empty;
+
+    const row = (data ?? [])[0] as
+      | {
+          run_date: string | null;
+          status: string | null;
+          s1_inserted_count: number | null;
+          s1_failed_count: number | null;
+          s2_enriched_count: number | null;
+          s2_failed_count: number | null;
+          duration_seconds: number | null;
+        }
+      | undefined;
+
+    if (!row) {
+      return { ...empty, available: true, status: "yellow" };
+    }
+
+    const failedTotal = (row.s1_failed_count ?? 0) + (row.s2_failed_count ?? 0);
+    return {
+      available: true,
+      status: ingestionStatus(row.run_date, row.status, failedTotal),
+      runDate: row.run_date,
+      runStatus: row.status,
+      s1Inserted: row.s1_inserted_count,
+      s1Failed: row.s1_failed_count,
+      s2Enriched: row.s2_enriched_count,
+      s2Failed: row.s2_failed_count,
+      durationSeconds: row.duration_seconds,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+async function getRecentEvents(): Promise<RecentEventsKpis> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("v_daily_run_log")
+      .select("run_id, run_date, status, duration_seconds")
+      .order("run_date", { ascending: false, nullsFirst: false })
+      .limit(5);
+
+    if (error) return { available: false, rows: [] };
+    return { available: true, rows: (data ?? []) as OpsEventRow[] };
+  } catch {
+    return { available: false, rows: [] };
+  }
+}
+
+export async function getOperationsData(): Promise<OperationsData> {
+  const [enrichment, ingestion, recentEvents] = await Promise.all([
+    getEnrichmentKpis(),
+    getIngestionKpis(),
+    getRecentEvents(),
+  ]);
+  return { enrichment, ingestion, recentEvents };
+}
