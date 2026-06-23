@@ -2,8 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/cockpit/dashboard-card";
 import {
   getOperationsData,
+  getSystemHealth,
   isSafeGithubRunUrl,
 } from "@/lib/cockpit/operations.queries";
+import { StatusBadge } from "@/components/cockpit/status-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +39,8 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default async function OperationsPage() {
-  const { enrichment, ingestion, recentEvents, github } =
-    await getOperationsData();
+  const [{ enrichment, ingestion, recentEvents, github }, systemHealth] =
+    await Promise.all([getOperationsData(), getSystemHealth()]);
 
   return (
     <div className="space-y-6">
@@ -201,13 +203,40 @@ export default async function OperationsPage() {
           ) : null}
         </DashboardCard>
 
-        {/* 5–7. Placeholders — no safe source yet */}
+        {/* 5. Datenbank / Supabase — live once migration 0024 is applied */}
         <DashboardCard
           title="Datenbank / Supabase"
-          status="gray"
-          value="—"
-          description="Noch keine sichere Operations-View vorhanden."
-        />
+          status={systemHealth.available ? systemHealth.status : "gray"}
+          description={
+            systemHealth.available
+              ? "Interne System-Checks aus v_cockpit_system_health."
+              : "Noch keine sichere Operations-View vorhanden."
+          }
+        >
+          {systemHealth.available ? (
+            <ul className="space-y-2 text-sm">
+              {systemHealth.checks.map((c) => (
+                <li
+                  key={c.check_key}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="font-medium">{c.title ?? c.check_key}</span>
+                    {c.message ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {c.message}
+                      </span>
+                    ) : null}
+                  </span>
+                  <StatusBadge status={c.status} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </DashboardCard>
+
+        {/* 6–7. Placeholders — no safe source yet */}
         <DashboardCard
           title="Public Portal Health"
           status="gray"

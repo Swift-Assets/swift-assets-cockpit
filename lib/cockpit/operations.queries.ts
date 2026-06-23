@@ -64,6 +64,37 @@ export interface OperationsData {
   github: GithubKpis;
 }
 
+export interface SystemHealthCheck {
+  check_key: string;
+  check_group: string | null;
+  status: TrafficStatus;
+  title: string | null;
+  message: string | null;
+  last_checked_at: string | null;
+}
+
+export interface SystemHealthKpis {
+  available: boolean;
+  status: TrafficStatus;
+  checks: SystemHealthCheck[];
+}
+
+/** Worst-first ordering for traffic-light rollup. */
+const STATUS_RANK: Record<TrafficStatus, number> = {
+  red: 3,
+  yellow: 2,
+  green: 1,
+  gray: 0,
+};
+
+function rollupStatus(checks: SystemHealthCheck[]): TrafficStatus {
+  let worst: TrafficStatus = "green";
+  for (const c of checks) {
+    if (STATUS_RANK[c.status] > STATUS_RANK[worst]) worst = c.status;
+  }
+  return worst;
+}
+
 /**
  * Defensive check that a value is a real GitHub Actions run URL — used before
  * rendering it as a link. Rejects non-GitHub schemes (e.g. inline:// markers).
@@ -276,6 +307,32 @@ async function getGithubSource(): Promise<GithubKpis> {
     };
   } catch {
     return empty;
+  }
+}
+
+/**
+ * Read-only system/data-pipeline health from the safe view
+ * swift_v2.v_cockpit_system_health. The view only exists once migration 0024 is
+ * applied; until then this query errors and the card degrades to a gray
+ * placeholder (available:false). Reads safe operational columns only.
+ */
+export async function getSystemHealth(): Promise<SystemHealthKpis> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("v_cockpit_system_health")
+      .select("check_key, check_group, status, title, message, last_checked_at")
+      .order("check_group", { ascending: true });
+
+    if (error) return { available: false, status: "gray", checks: [] };
+
+    const checks = (data ?? []) as SystemHealthCheck[];
+    if (checks.length === 0) {
+      return { available: false, status: "gray", checks: [] };
+    }
+    return { available: true, status: rollupStatus(checks), checks };
+  } catch {
+    return { available: false, status: "gray", checks: [] };
   }
 }
 
