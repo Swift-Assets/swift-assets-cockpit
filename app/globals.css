@@ -4,18 +4,32 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Canvas vs. surfaces: a calm near-white app background with pure-white
+       cards gives the premium "data platform" depth (Linear/Attio style). */
+    --background: 210 20% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --primary: 222 47% 31%;
-    --primary-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 31%;
-    --radius: 0.5rem;
+    --muted-foreground: 215 16% 46%;
+    /* Near-black navy primary — serious, not flashy. */
+    --primary: 222 47% 17%;
+    --primary-foreground: 210 40% 99%;
+    --border: 214 24% 90%;
+    --input: 214 24% 90%;
+    --ring: 222 47% 40%;
+    --radius: 0.625rem;
+
+    /* Inter when available (most design machines have it), else a high-quality
+       system stack. No webfont network dependency — deploy-safe. */
+    --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    /* Subtle elevation tuned for light surfaces. */
+    --shadow-card: 0 1px 2px 0 hsl(222 47% 11% / 0.04),
+      0 1px 3px 0 hsl(222 47% 11% / 0.03);
+    --shadow-pop: 0 10px 30px -12px hsl(222 47% 11% / 0.18),
+      0 4px 8px -4px hsl(222 47% 11% / 0.08);
   }
 
   .dark {
@@ -30,6 +44,8 @@
     --border: 217 33% 20%;
     --input: 217 33% 20%;
     --ring: 213 27% 84%;
+    --shadow-card: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
+    --shadow-pop: 0 10px 30px -12px hsl(0 0% 0% / 0.6);
   }
 
   * {
@@ -38,6 +54,30 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "cv01" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular figures everywhere numbers matter (tables, metrics). */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Quiet, thin scrollbars that match the calm aesthetic. */
+  .cockpit-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .cockpit-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .cockpit-scroll::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
   }
 }

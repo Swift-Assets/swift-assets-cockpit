@@ -13,6 +13,17 @@ const config: Config = {
       padding: "1.5rem",
     },
     extend: {
+      fontFamily: {
+        sans: [
+          "var(--font-sans)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "sans-serif",
+        ],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -33,15 +44,21 @@ const config: Config = {
         },
         // Traffic-light statuses used across cockpit modules.
         status: {
-          green: "hsl(142 71% 45%)",
-          yellow: "hsl(38 92% 50%)",
-          red: "hsl(0 72% 51%)",
+          green: "hsl(142 64% 38%)",
+          yellow: "hsl(35 92% 42%)",
+          red: "hsl(0 72% 48%)",
+          blue: "hsl(217 79% 50%)",
+          gray: "hsl(215 16% 55%)",
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        pop: "var(--shadow-pop)",
       },
     },
   },

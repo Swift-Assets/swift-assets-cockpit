@@ -9,14 +9,29 @@ export function CockpitSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-60 shrink-0 border-r border-border bg-card md:flex md:flex-col">
-      <div className="flex h-14 items-center gap-2 border-b border-border px-5">
-        <div className="h-6 w-6 rounded bg-primary" aria-hidden />
-        <span className="text-sm font-semibold tracking-tight">
-          Swift Assets · Cockpit
-        </span>
+    <aside className="sticky top-0 hidden h-screen w-[15rem] shrink-0 flex-col border-r border-border bg-card md:flex">
+      {/* Brand lockup */}
+      <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[0.7rem] font-bold text-primary-foreground"
+          aria-hidden
+        >
+          SA
+        </div>
+        <div className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-sm font-semibold tracking-tight">
+            Swift Assets
+          </span>
+          <span className="truncate text-[0.7rem] text-muted-foreground">
+            Internal Cockpit
+          </span>
+        </div>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+        <p className="px-3 pb-1.5 pt-2 text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground/70">
+          Navigation
+        </p>
         {COCKPIT_NAV.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -26,23 +41,41 @@ export function CockpitSidebar() {
               key={item.href}
               href={item.href}
               title={item.description}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 active
                   ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              {active ? (
+                <span
+                  className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary"
+                  aria-hidden
+                />
+              ) : null}
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  active ? "text-foreground" : "text-muted-foreground",
+                )}
+              />
               {item.label}
             </Link>
           );
         })}
       </nav>
+
       <div className="border-t border-border p-3">
-        <p className="px-3 text-[11px] leading-relaxed text-muted-foreground">
-          Internes Werkzeug. Vertraulich.
-        </p>
+        <div className="rounded-md bg-muted/50 px-3 py-2">
+          <p className="text-[0.7rem] font-medium text-foreground">
+            Vertraulich · Intern
+          </p>
+          <p className="mt-0.5 text-[0.7rem] leading-relaxed text-muted-foreground">
+            Nur für autorisierte Mitarbeitende.
+          </p>
+        </div>
       </div>
     </aside>
   );

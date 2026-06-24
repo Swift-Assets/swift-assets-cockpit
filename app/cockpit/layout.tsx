@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { CockpitSidebar } from "@/components/cockpit/sidebar";
-import { CockpitTopbar } from "@/components/cockpit/topbar";
+import { CockpitShell } from "@/components/cockpit/shell";
 import { getCockpitProfile } from "@/lib/cockpit/profile";
 
 // Cockpit pages are always rendered per-request under the user's session.
@@ -40,13 +39,5 @@ export default async function CockpitLayout({
     );
   }
 
-  return (
-    <div className="flex min-h-screen">
-      <CockpitSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <CockpitTopbar profile={profile} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
-  );
+  return <CockpitShell profile={profile}>{children}</CockpitShell>;
 }

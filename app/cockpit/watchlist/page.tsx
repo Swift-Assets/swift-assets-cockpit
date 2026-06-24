@@ -1,3 +1,4 @@
+import { Star } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -6,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/cockpit/empty-state";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
 import { WatchlistAcquisitionFilteredTable } from "@/components/cockpit/watchlist-acquisition-filtered-table";
@@ -84,9 +86,11 @@ export default async function WatchlistPage() {
         <CardContent>
           {internal.available ? (
             internal.rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Noch keine Einträge in Ihrer Watchlist.
-              </p>
+              <EmptyState
+                icon={<Star className="h-5 w-5" />}
+                title="Noch keine Akquise-Fälle auf der Watchlist"
+                description="Fügen Sie ein Unternehmen hinzu, um Bewertungen, Aufgaben und Entwürfe zu verwalten. Nutzen Sie die Suche oben („Unternehmen suchen“)."
+              />
             ) : (
               <WatchlistAcquisitionFilteredTable
                 rows={internal.rows}
@@ -98,9 +102,11 @@ export default async function WatchlistPage() {
           ) : basic.error ? (
             <p className="text-sm text-status-yellow">{basic.error}</p>
           ) : basic.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Noch keine Einträge in Ihrer Watchlist.
-            </p>
+            <EmptyState
+              icon={<Star className="h-5 w-5" />}
+              title="Noch keine Akquise-Fälle auf der Watchlist"
+              description="Fügen Sie ein Unternehmen hinzu, um Bewertungen, Aufgaben und Entwürfe zu verwalten. Nutzen Sie die Suche oben („Unternehmen suchen“)."
+            />
           ) : (
             <WatchlistFilteredTable rows={basic.rows} openTaskKeys={openTaskKeys} />
           )}

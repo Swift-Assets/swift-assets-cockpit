@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/cockpit/dashboard-card";
+import { MetricCard } from "@/components/cockpit/metric-card";
 import { StatusBadge, type TrafficStatus } from "@/components/cockpit/status-badge";
 import { SystemHealthList } from "@/components/cockpit/system-health-list";
 import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
@@ -746,16 +747,7 @@ function SummaryCard({
   hint: string;
 }) {
   return (
-    <Card>
-      <CardContent className="space-y-1 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">{title}</span>
-          <StatusBadge status={status} />
-        </div>
-        <div className="text-xl font-semibold tabular-nums">{value}</div>
-        <div className="text-xs text-muted-foreground">{hint}</div>
-      </CardContent>
-    </Card>
+    <MetricCard label={title} value={value} hint={hint} status={status} />
   );
 }
 
