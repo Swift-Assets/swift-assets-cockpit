@@ -1,0 +1,14 @@
+# Netlify configuration for the Swift Assets Cockpit (Next.js 15 App Router).
+# Explicitly activates the official Next.js runtime so SSR routes, middleware
+# and the `/` -> /cockpit/dashboard redirect work (fixes plugin_state: none).
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Netlify auto-installs this plugin from the registry when it is declared here;
+# it does NOT need to be in package.json devDependencies.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
