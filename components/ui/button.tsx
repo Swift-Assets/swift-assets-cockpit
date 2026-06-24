@@ -7,10 +7,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // Website CTA language: square, ink/paper inversion.
+        default: "bg-ink text-paper hover:bg-ink-soft",
         outline:
-          "border border-border bg-background hover:bg-muted hover:text-foreground",
-        ghost: "hover:bg-muted hover:text-foreground",
+          "border border-ink bg-transparent text-ink hover:bg-ink hover:text-paper",
+        ghost: "text-foreground hover:bg-muted",
       },
       size: {
         default: "h-9 px-4 py-2",

@@ -1,90 +1,90 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * Swift Assets bird mark — a white swift/swallow silhouette inside a thin ring,
- * wrapped in the faded circular halo brand motif (.brand-halo).
- *
- * NOTE: the official brand SVG is not present in the repo; this is a faithful
- * in-house recreation of the website's bird-in-circle + halo. Drop the official
- * asset into /public and swap the <svg> here when available.
+ * Swift Assets bird mark — the OFFICIAL logo asset (white swift inside a black
+ * disc) copied from the website source into /public/brand/logo-bird.png. The
+ * disc is self-contained, so it reads on both paper (white) and ink (black)
+ * surfaces. No recreated SVG.
  */
 export function BirdMark({
-  size = 40,
-  halo = true,
+  size = 56,
   className,
+  priority = false,
 }: {
   size?: number;
-  halo?: boolean;
   className?: string;
+  priority?: boolean;
 }) {
   return (
-    <span
-      className={cn(
-        "relative inline-flex items-center justify-center rounded-full border border-border/70 bg-background",
-        halo && "brand-halo",
-        className,
-      )}
+    <Image
+      src="/brand/logo-bird.png"
+      alt="Swift Assets"
+      width={size}
+      height={size}
+      priority={priority}
+      className={cn("object-contain", className)}
       style={{ width: size, height: size }}
-      aria-hidden
-    >
-      <svg
-        viewBox="0 0 64 64"
-        width={size * 0.58}
-        height={size * 0.58}
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Stylized swift in flight — single white shape. */}
-        <path
-          d="M58 12c-9 1.5-16.5 6-23 13.2C29.6 31 26 36 21.5 39.3c-3 2.2-6.8 3.5-11.5 3.9 4.2 2.6 8.8 3.6 13.4 2.7 6.7-1.3 11.7-5.4 15.8-10.7-1.2 5.2-4 9.6-8.4 13.4 7.2-1.4 12.9-5.2 17.2-11.2C56 25 58.2 18.6 58 12Z"
-          fill="currentColor"
-          className="text-foreground"
-        />
-      </svg>
-    </span>
+    />
   );
 }
 
 /**
- * Swift Assets wordmark: "SWIFT ASSETS" + "UG (haftungsbeschränkt)" subline,
- * matching the website's uppercase, wide-tracked treatment.
+ * Swift Assets wordmark — exact website treatment (Logo.tsx): "SWIFT ASSETS"
+ * font-semibold tracking-[0.22em] + "UG (HAFTUNGSBESCHRÄNKT)" font-light
+ * tracking-[0.18em] muted subline. `invert` switches to white-on-dark chrome.
  */
 export function Wordmark({
   size = "md",
+  invert = false,
   className,
 }: {
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
+  invert?: boolean;
   className?: string;
 }) {
+  const brand =
+    size === "sm" ? "text-[15px]" : size === "lg" ? "text-xl" : "text-lg";
+  const sub =
+    size === "sm" ? "text-[10px]" : size === "lg" ? "text-[12px]" : "text-[11px]";
   return (
-    <span className={cn("flex flex-col leading-none", className)}>
+    <div className={cn("flex flex-col leading-none", className)}>
       <span
         className={cn(
-          "font-semibold uppercase tracking-[0.18em] text-foreground",
-          size === "sm" ? "text-[0.82rem]" : "text-sm",
+          "font-semibold tracking-[0.22em]",
+          brand,
+          invert ? "text-white" : "text-ink",
         )}
       >
-        Swift Assets
+        SWIFT ASSETS
       </span>
-      <span className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground">
-        UG · Internal Cockpit
+      <span
+        className={cn(
+          "mt-1 font-light tracking-[0.18em]",
+          sub,
+          invert ? "text-mute-2" : "text-mute",
+        )}
+      >
+        UG (HAFTUNGSBESCHRÄNKT)
       </span>
-    </span>
+    </div>
   );
 }
 
-/** Combined lockup (bird + wordmark) used in the sidebar and login. */
+/** Combined lockup (bird + wordmark), website Logo.tsx style. */
 export function BrandLockup({
-  birdSize = 40,
+  birdSize = 48,
+  invert = false,
   className,
 }: {
   birdSize?: number;
+  invert?: boolean;
   className?: string;
 }) {
   return (
-    <span className={cn("flex items-center gap-3", className)}>
+    <span className={cn("flex items-center gap-3 leading-none", className)}>
       <BirdMark size={birdSize} />
-      <Wordmark />
+      <Wordmark size="sm" invert={invert} />
     </span>
   );
 }

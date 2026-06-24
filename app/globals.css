@@ -4,38 +4,48 @@
 
 @layer base {
   /*
-   * Swift Assets brand palette (dark, monochrome, editorial) — derived from the
-   * official website: near-black canvas, white headlines, muted-gray secondary
-   * text, hairline borders, restrained status accents. White is the "primary"
-   * (mirrors the white bird-in-circle and outlined CTAs).
+   * Swift Assets brand system — transferred from the official website source
+   * (src/styles.css, Logo/Nav/Hero). Editorial black-on-white: paper canvas,
+   * ink-black text, BLACK chrome (sidebar/topbar/login), square 0px corners,
+   * exact neutral palette (#000 #1a1a1a #2d2d2d #888 #a3a3a3 #d4d4d4 #fff),
+   * Inter. Restrained status hues only.
    */
   :root {
-    --background: 224 22% 6%;
-    --foreground: 0 0% 98%;
-    --card: 222 18% 9%;
-    --card-foreground: 0 0% 98%;
-    --muted: 222 14% 14%;
-    --muted-foreground: 220 9% 62%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 224 30% 8%;
-    --border: 220 12% 17%;
-    --input: 220 12% 17%;
-    --ring: 0 0% 80%;
-    --radius: 0.5rem;
+    --background: 0 0% 100%; /* paper #ffffff */
+    --foreground: 0 0% 0%; /* ink #000000 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --primary: 0 0% 0%; /* black buttons */
+    --primary-foreground: 0 0% 100%;
+    --border: 0 0% 85%; /* light divider ~#d9d9d9 */
+    --input: 0 0% 80%;
+    --ring: 0 0% 0%;
+    --radius: 0px; /* square, architectural */
 
-    /* Inter-preferring system stack — no webfont network dependency. */
-    --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
-      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-sans: "Inter", "DM Sans", ui-sans-serif, system-ui,
+      -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-    /* Restrained, slightly desaturated status hues for a premium feel. */
-    --status-green: 150 38% 46%;
-    --status-yellow: 40 70% 55%;
-    --status-red: 0 62% 55%;
-    --status-blue: 213 45% 62%;
-    --status-gray: 220 9% 55%;
+    /* Exact brand neutrals (from website @theme tokens). */
+    --ink: 0 0% 0%; /* #000 */
+    --ink-soft: 0 0% 10%; /* #1a1a1a */
+    --ink-mid: 0 0% 18%; /* #2d2d2d */
+    --mute: 0 0% 53%; /* #888 */
+    --mute-2: 0 0% 64%; /* #a3a3a3 */
+    --nav: 0 0% 74%; /* #bdbdbd */
+    --line: 0 0% 83%; /* #d4d4d4 */
+    --paper: 0 0% 100%; /* #fff */
 
-    --shadow-card: 0 1px 2px 0 hsl(0 0% 0% / 0.5);
-    --shadow-pop: 0 20px 50px -20px hsl(0 0% 0% / 0.7);
+    /* Restrained status hues (readable on white). */
+    --status-green: 152 46% 33%;
+    --status-yellow: 36 78% 38%;
+    --status-red: 0 60% 45%;
+    --status-blue: 214 52% 40%;
+    --status-gray: 0 0% 45%;
+
+    --shadow-card: none;
+    --shadow-pop: 0 24px 60px -24px hsl(0 0% 0% / 0.35);
   }
 
   * {
@@ -45,7 +55,14 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "cv01" 1;
+    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
   }
 
   .tabular-nums {
@@ -54,35 +71,14 @@
 }
 
 @layer components {
-  /* Uppercase, wide-tracked section label (website "KONTAKT"/"LEISTUNGEN"). */
+  /* Section eyebrow — website style: uppercase, wide tracking, muted #888. */
   .eyebrow {
-    @apply text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground;
-  }
-
-  /*
-   * Faded circular halo reused as the core brand motif behind the bird mark.
-   * A soft radial glow plus a thin ring — subtle, never noisy.
-   */
-  .brand-halo {
-    position: relative;
-  }
-  .brand-halo::before {
-    content: "";
-    position: absolute;
-    inset: -42%;
-    border-radius: 9999px;
-    background: radial-gradient(
-      circle at center,
-      hsl(0 0% 100% / 0.1) 0%,
-      hsl(0 0% 100% / 0.04) 38%,
-      transparent 68%
-    );
-    pointer-events: none;
+    @apply text-[0.7rem] font-medium uppercase tracking-[0.3em];
+    color: hsl(var(--mute));
   }
 }
 
 @layer utilities {
-  /* Quiet, thin scrollbars matching the dark canvas. */
   .cockpit-scroll {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
@@ -95,6 +91,5 @@
     background-color: hsl(var(--border));
     border: 3px solid transparent;
     background-clip: content-box;
-    border-radius: 9999px;
   }
 }

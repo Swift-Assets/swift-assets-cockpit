@@ -50,11 +50,20 @@ const config: Config = {
           blue: "hsl(var(--status-blue))",
           gray: "hsl(var(--status-gray))",
         },
+        // Exact Swift Assets brand neutrals (from website source).
+        ink: "hsl(var(--ink))",
+        "ink-soft": "hsl(var(--ink-soft))",
+        "ink-mid": "hsl(var(--ink-mid))",
+        mute: "hsl(var(--mute))",
+        "mute-2": "hsl(var(--mute-2))",
+        nav: "hsl(var(--nav))",
+        line: "hsl(var(--line))",
+        paper: "hsl(var(--paper))",
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "var(--radius)",
+        sm: "var(--radius)",
       },
       boxShadow: {
         card: "var(--shadow-card)",

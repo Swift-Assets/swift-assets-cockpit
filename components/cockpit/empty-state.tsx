@@ -30,13 +30,13 @@ export function EmptyState({
       <div className="mb-5 text-muted-foreground">
         {icon ? (
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card"
+            className="flex h-11 w-11 items-center justify-center border border-border bg-card"
             aria-hidden
           >
             {icon}
           </div>
         ) : (
-          <BirdMark size={48} />
+          <BirdMark size={52} />
         )}
       </div>
       <h3 className="text-sm font-semibold tracking-tight text-foreground">

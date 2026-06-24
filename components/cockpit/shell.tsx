@@ -20,7 +20,7 @@ export function CockpitShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <CockpitTopbar profile={profile} />
         <main className="cockpit-scroll flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1440px] p-6">{children}</div>
+          <div className="mx-auto w-full max-w-[1440px] p-6 lg:p-10">{children}</div>
         </main>
       </div>
     </div>

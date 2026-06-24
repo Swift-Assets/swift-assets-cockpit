@@ -21,12 +21,12 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("flex items-start justify-between gap-6", className)}>
-      <div className="min-w-0 space-y-3">
+      <div className="min-w-0 space-y-5">
         <p className="eyebrow">{eyebrow}</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {title}
         </h1>
-        <div className="h-px w-12 bg-border" aria-hidden />
+        <div className="h-px w-24 bg-ink-mid" aria-hidden />
         {lead ? (
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {lead}

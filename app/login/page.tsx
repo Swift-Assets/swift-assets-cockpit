@@ -1,11 +1,3 @@
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { BirdMark } from "@/components/cockpit/brand";
 import { safeRedirectPath } from "@/lib/auth/temp-access";
 
@@ -14,11 +6,10 @@ export const dynamic = "force-dynamic";
 /**
  * TEMPORARY: Magic Link disabled during private UI refinement phase.
  *
- * Login is currently a fast access-code gate: the form posts the code to
- * /auth/access (server-only validation against TEMP_COCKPIT_ACCESS_CODE), which
- * sets the httpOnly access cookie and redirects into the cockpit. No email, no
- * Supabase request, no rate limit. The Magic-Link form is preserved in
- * components/cockpit/magic-link-form.tsx for easy re-enable.
+ * Login styled as the website Hero (black, centered real bird, large wordmark,
+ * thin #2d2d2d divider, outlined uppercase CTA). The form posts the access code
+ * to /auth/access (server-only validation). Magic-Link form preserved in
+ * components/cockpit/magic-link-form.tsx.
  */
 export default async function LoginPage({
   searchParams,
@@ -30,56 +21,60 @@ export default async function LoginPage({
   const hasError = params.error === "code";
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-6">
-      {/* Brand hero: bird + faded halo */}
-      <div className="mb-10 flex flex-col items-center text-center">
-        <BirdMark size={84} />
-        <h1 className="mt-7 text-2xl font-semibold uppercase tracking-[0.22em] text-foreground">
-          Swift Assets
-        </h1>
-        <p className="mt-2 text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
-          UG (haftungsbeschränkt) · Internal Cockpit
-        </p>
-        <div className="mt-5 h-px w-12 bg-border" aria-hidden />
-      </div>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-ink px-6 py-16 text-white">
+      <div className="flex w-full max-w-md flex-col items-center text-center">
+        <BirdMark size={132} priority />
 
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Interner Zugang</CardTitle>
-          <CardDescription>
-            Bitte geben Sie den Zugangscode ein, um das Cockpit zu öffnen. Kein
-            öffentlicher Zugang.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action="/auth/access" method="post" className="space-y-4">
-            <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
-            <div className="space-y-1.5">
-              <label htmlFor="code" className="eyebrow">
-                Zugangscode
-              </label>
-              <input
-                id="code"
-                name="code"
-                type="password"
-                required
-                autoComplete="off"
-                autoFocus
-                placeholder="••••••••"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Cockpit öffnen
-            </Button>
-            {hasError ? (
-              <p className="text-sm text-status-red">
-                Ungültiger Zugangscode. Bitte erneut versuchen.
-              </p>
-            ) : null}
-          </form>
-        </CardContent>
-      </Card>
+        <h1
+          className="mt-10 font-semibold leading-none"
+          style={{ fontSize: "clamp(2rem, 7vw, 3.25rem)", letterSpacing: "clamp(2px, 1.2vw, 12px)" }}
+        >
+          SWIFT&nbsp;ASSETS
+        </h1>
+        <p className="mt-4 text-xs font-light uppercase tracking-[0.3em] text-mute">
+          UG (Haftungsbeschränkt) · Internal Cockpit
+        </p>
+
+        <div className="my-12 h-px w-24 bg-ink-mid" aria-hidden />
+
+        <form action="/auth/access" method="post" className="w-full space-y-5 text-left">
+          <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
+          <div className="space-y-2">
+            <label
+              htmlFor="code"
+              className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute"
+            >
+              Zugangscode
+            </label>
+            <input
+              id="code"
+              name="code"
+              type="password"
+              required
+              autoComplete="off"
+              autoFocus
+              placeholder="••••••••"
+              className="flex h-12 w-full border border-ink-mid bg-transparent px-4 text-sm text-white outline-none transition-colors placeholder:text-mute focus:border-white"
+            />
+          </div>
+          <button
+            type="submit"
+            className="inline-flex h-12 w-full items-center justify-center gap-3 border border-white text-sm uppercase tracking-[0.3em] text-white transition-colors hover:bg-white hover:text-ink"
+          >
+            Cockpit öffnen
+            <span aria-hidden>→</span>
+          </button>
+          {hasError ? (
+            <p className="text-sm text-status-red">
+              Ungültiger Zugangscode. Bitte erneut versuchen.
+            </p>
+          ) : null}
+        </form>
+
+        <p className="mt-10 text-[0.7rem] uppercase tracking-[0.22em] text-mute">
+          Kein öffentlicher Zugang
+        </p>
+      </div>
     </main>
   );
 }
