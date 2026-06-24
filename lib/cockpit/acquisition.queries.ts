@@ -57,16 +57,20 @@ export async function getAcquisitionLeads(
       .from("v_cockpit_company_announcements")
       .select(SAFE_ANNOUNCEMENT_COLUMNS)
       .order("announcement_date", { ascending: false, nullsFirst: false })
-      .limit(400);
+      .limit(800);
 
     if (annErr || !anns) return { available: false, rows: [] };
 
-    // Keep the latest announcement per entity (rows already date-desc).
+    // Keep, per entity, the latest announcement that is in the acquisition
+    // window (rows are date-desc). Filtering to the window FIRST means a company
+    // whose newest announcement is an untyped/monitor one is still surfaced via
+    // its most recent in-window announcement.
     const latestByEntity = new Map<string, (typeof anns)[number]>();
     for (const a of anns) {
-      const eid = (a as { entity_id: string | null }).entity_id;
-      if (!eid) continue;
-      if (!latestByEntity.has(eid)) latestByEntity.set(eid, a);
+      const row = a as { entity_id: string | null; announcement_type_hint: string | null };
+      if (!row.entity_id) continue;
+      if (!isAcquisitionWindow(phaseLabel(row.announcement_type_hint))) continue;
+      if (!latestByEntity.has(row.entity_id)) latestByEntity.set(row.entity_id, a);
     }
 
     const entityIds = [...latestByEntity.keys()];
