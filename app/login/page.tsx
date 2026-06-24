@@ -1,24 +1,47 @@
+"use client";
+
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { BirdMark } from "@/components/cockpit/brand";
 import { safeRedirectPath } from "@/lib/auth/temp-access";
 
-export const dynamic = "force-dynamic";
-
 /**
- * TEMPORARY: Magic Link disabled during private UI refinement phase.
+ * Cockpit login — Supabase email/password (signInWithPassword). Establishes a
+ * real Supabase session (cookie-based via @supabase/ssr) so all RLS-gated views
+ * and RPCs work under auth.uid(). Styled as the Swift Assets website Hero
+ * (black, real bird, wordmark, #2d2d2d divider, outlined uppercase CTA).
  *
- * Login styled as the website Hero (black, centered real bird, large wordmark,
- * thin #2d2d2d divider, outlined uppercase CTA). The form posts the access code
- * to /auth/access (server-only validation). Magic-Link form preserved in
- * components/cockpit/magic-link-form.tsx.
+ * Magic Link and the temporary access-code gate are both retired as the active
+ * auth method. No password is hardcoded; accounts are managed in Supabase.
  */
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ redirectedFrom?: string; error?: string }>;
-}) {
-  const params = await searchParams;
-  const redirectedFrom = safeRedirectPath(params.redirectedFrom);
-  const hasError = params.error === "code";
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("submitting");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        setStatus("error");
+        return;
+      }
+      // Full navigation so middleware/SSR pick up the freshly-set session cookie.
+      const from =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("redirectedFrom")
+          : null;
+      window.location.assign(safeRedirectPath(from));
+    } catch {
+      setStatus("error");
+    }
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-ink px-6 py-16 text-white">
@@ -27,7 +50,10 @@ export default async function LoginPage({
 
         <h1
           className="mt-10 font-semibold leading-none"
-          style={{ fontSize: "clamp(2rem, 7vw, 3.25rem)", letterSpacing: "clamp(2px, 1.2vw, 12px)" }}
+          style={{
+            fontSize: "clamp(2rem, 7vw, 3.25rem)",
+            letterSpacing: "clamp(2px, 1.2vw, 12px)",
+          }}
         >
           SWIFT&nbsp;ASSETS
         </h1>
@@ -37,37 +63,56 @@ export default async function LoginPage({
 
         <div className="my-12 h-px w-24 bg-ink-mid" aria-hidden />
 
-        <form action="/auth/access" method="post" className="w-full space-y-5 text-left">
-          <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
+        <form onSubmit={handleSubmit} className="w-full space-y-5 text-left">
           <div className="space-y-2">
             <label
-              htmlFor="code"
+              htmlFor="email"
               className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute"
             >
-              Zugangscode
+              E-Mail
             </label>
             <input
-              id="code"
-              name="code"
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@swift-assets.de"
+              className="flex h-12 w-full border border-ink-mid bg-transparent px-4 text-sm text-white outline-none transition-colors placeholder:text-mute focus:border-white"
+            />
+          </div>
+          <div className="space-y-2">
+            <label
+              htmlFor="password"
+              className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute"
+            >
+              Passwort
+            </label>
+            <input
+              id="password"
+              name="password"
               type="password"
               required
-              autoComplete="off"
-              autoFocus
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="flex h-12 w-full border border-ink-mid bg-transparent px-4 text-sm text-white outline-none transition-colors placeholder:text-mute focus:border-white"
             />
           </div>
           <button
             type="submit"
-            className="inline-flex h-12 w-full items-center justify-center gap-3 border border-white text-sm uppercase tracking-[0.3em] text-white transition-colors hover:bg-white hover:text-ink"
+            disabled={status === "submitting"}
+            className="inline-flex h-12 w-full items-center justify-center gap-3 border border-white text-sm uppercase tracking-[0.3em] text-white transition-colors hover:bg-white hover:text-ink disabled:opacity-50"
           >
-            Cockpit öffnen
+            {status === "submitting" ? "Wird geprüft…" : "Einloggen"}
             <span aria-hidden>→</span>
           </button>
-          {hasError ? (
-            <p className="text-sm text-status-red">
-              Ungültiger Zugangscode. Bitte erneut versuchen.
-            </p>
+          {status === "error" ? (
+            <p className="text-sm text-status-red">Ungültige Zugangsdaten.</p>
           ) : null}
         </form>
 

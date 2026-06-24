@@ -1,30 +1,15 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CockpitShell } from "@/components/cockpit/shell";
-import { getCockpitProfile, type CockpitProfile } from "@/lib/cockpit/profile";
-import { TEMP_ACCESS_COOKIE, TEMP_ACCESS_VALUE } from "@/lib/auth/temp-access";
+import { getCockpitProfile } from "@/lib/cockpit/profile";
 
 // Cockpit pages are always rendered per-request under the user's session.
 export const dynamic = "force-dynamic";
 
 /**
- * TEMPORARY: Magic Link disabled during private UI refinement phase.
- *
- * Access is gated by the access-code cookie (enforced in middleware). When a
- * real Supabase session exists we use its profile; otherwise, with a valid
- * access cookie, we render the shell under a minimal fallback profile (data that
- * needs a Supabase session simply shows empty states). To restore Magic Link,
- * drop the fallback branch and redirect when getCockpitProfile() is null.
+ * Requires a real Supabase session (email/password login). Middleware already
+ * gates /cockpit/*; this is defense in depth. With a session, getCockpitProfile
+ * resolves under auth.uid() and all RLS-gated data/RPCs work.
  */
-const FALLBACK_PROFILE: CockpitProfile = {
-  userId: "",
-  email: null,
-  role: "viewer",
-  isActive: true,
-  nachlassAuthorized: false,
-  displayName: "Zugangscode",
-};
-
 export default async function CockpitLayout({
   children,
 }: {
@@ -33,12 +18,7 @@ export default async function CockpitLayout({
   const profile = await getCockpitProfile();
 
   if (!profile) {
-    const cookieStore = await cookies();
-    const hasTempAccess =
-      cookieStore.get(TEMP_ACCESS_COOKIE)?.value === TEMP_ACCESS_VALUE;
-    // Defense in depth — middleware already redirects unauthenticated /cockpit/*.
-    if (!hasTempAccess) redirect("/login");
-    return <CockpitShell profile={FALLBACK_PROFILE}>{children}</CockpitShell>;
+    redirect("/login");
   }
 
   if (!profile.isActive) {
@@ -53,7 +33,7 @@ export default async function CockpitLayout({
           <form action="/auth/sign-out" method="post">
             <button
               type="submit"
-              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+              className="border border-border px-3 py-1.5 text-sm hover:bg-muted"
             >
               Abmelden
             </button>
