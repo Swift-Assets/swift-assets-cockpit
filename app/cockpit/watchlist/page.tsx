@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
-import { WatchlistAcquisitionFilteredTable } from "@/components/cockpit/watchlist-acquisition-filtered-table";
+import { WatchlistPipeline } from "@/components/cockpit/watchlist-pipeline";
 import { getMyWatchlist } from "@/lib/cockpit/watchlist.queries";
 import { getInternalWatchlist } from "@/lib/cockpit/watchlist-internal.queries";
 import { getMyTasks } from "@/lib/cockpit/tasks.queries";
@@ -76,10 +76,10 @@ export default async function WatchlistPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Akquise-Watchlist</CardTitle>
+          <CardTitle className="text-base">Akquise-Pipeline</CardTitle>
           <CardDescription>
             {internal.available
-              ? "Quelle: swift_v2.v_cockpit_watchlist_internal. Änderungen über gesicherte RPCs; Detailpanel je Zeile aufklappbar."
+              ? "Stufen: Neue Fälle · In Beobachtung · Follow-up fällig · Kontakt aufnehmen · Ignoriert. Quelle: v_cockpit_watchlist_internal; Änderungen über gesicherte RPCs."
               : "Interne Erweiterung nicht verfügbar — Basis-Watchlist (v_cockpit_my_watchlist)."}
           </CardDescription>
         </CardHeader>
@@ -92,7 +92,7 @@ export default async function WatchlistPage() {
                 description="Fügen Sie ein Unternehmen hinzu, um Bewertungen, Aufgaben und Entwürfe zu verwalten. Nutzen Sie die Suche oben („Unternehmen suchen“)."
               />
             ) : (
-              <WatchlistAcquisitionFilteredTable
+              <WatchlistPipeline
                 rows={internal.rows}
                 openTaskKeys={openTaskKeys}
                 activeDraftKeys={draftKeys}

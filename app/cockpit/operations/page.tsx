@@ -6,6 +6,7 @@ import {
   isSafeGithubRunUrl,
 } from "@/lib/cockpit/operations.queries";
 import { SystemHealthList } from "@/components/cockpit/system-health-list";
+import { RunHealthCheckButton } from "@/components/cockpit/system-health-actions";
 import { getMyTasks } from "@/lib/cockpit/tasks.queries";
 import { openTaskContextKeys } from "@/lib/cockpit/tasks";
 
@@ -55,7 +56,10 @@ export default async function OperationsPage() {
             folgen, sobald Datenquellen vorhanden sind.
           </p>
         </div>
-        <Badge variant="green">Phase 6B · MVP</Badge>
+        <div className="flex items-center gap-3">
+          <RunHealthCheckButton />
+          <Badge variant="green">Phase 7A · Betrieb</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -220,6 +224,7 @@ export default async function OperationsPage() {
             <SystemHealthList
               checks={systemHealth.checks}
               showTaskAction
+              showResolveActions
               openTaskKeys={openTaskKeys}
             />
           ) : null}

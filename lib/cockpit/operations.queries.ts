@@ -74,6 +74,7 @@ export interface SystemHealthCheck {
   // timestamps). Never raw errors, payloads, or PII — enforced by the writer.
   details: Record<string, string | number | boolean | null> | null;
   last_checked_at: string | null;
+  resolved_at: string | null;
 }
 
 export interface SystemHealthKpis {
@@ -325,7 +326,7 @@ export async function getSystemHealth(): Promise<SystemHealthKpis> {
     const { data, error } = await supabase
       .from("v_cockpit_system_health")
       .select(
-        "check_key, check_group, status, title, message, details, last_checked_at",
+        "check_key, check_group, status, title, message, details, last_checked_at, resolved_at",
       )
       .order("check_group", { ascending: true });
 

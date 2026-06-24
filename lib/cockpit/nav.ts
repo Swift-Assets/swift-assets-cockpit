@@ -1,4 +1,5 @@
 import {
+  Bell,
   Calendar,
   CheckSquare,
   LayoutDashboard,
@@ -41,6 +42,12 @@ export const COCKPIT_NAV: CockpitNavItem[] = [
     href: "/cockpit/tasks",
     icon: CheckSquare,
     description: "Internal tasks & follow-ups",
+  },
+  {
+    label: "Keyword-Alerts",
+    href: "/cockpit/keyword-alerts",
+    icon: Bell,
+    description: "Keyword rules & announcement matches",
   },
   {
     label: "Operations",

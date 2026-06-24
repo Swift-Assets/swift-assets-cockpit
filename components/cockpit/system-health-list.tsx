@@ -1,5 +1,7 @@
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/cockpit/status-badge";
 import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
+import { SystemHealthCheckActions } from "@/components/cockpit/system-health-actions";
 import { hasOpenTaskForContext } from "@/lib/cockpit/tasks";
 import type { SystemHealthCheck } from "@/lib/cockpit/operations.queries";
 
@@ -57,12 +59,15 @@ export function SystemHealthList({
   checks,
   showTaskAction = false,
   openTaskKeys = [],
+  showResolveActions = false,
 }: {
   checks: SystemHealthCheck[];
   /** When true, red/yellow checks show a one-click "create task" button. */
   showTaskAction?: boolean;
   /** Open-task context keys for duplicate detection (from openTaskContextKeys). */
   openTaskKeys?: string[];
+  /** When true, each check offers resolve/reopen controls (Phase 7A). */
+  showResolveActions?: boolean;
 }) {
   if (checks.length === 0) {
     return (
@@ -83,7 +88,14 @@ export function SystemHealthList({
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">{c.title ?? c.check_key}</span>
               <span className="flex shrink-0 items-center gap-2">
+                {c.resolved_at ? <Badge variant="green">geprüft</Badge> : null}
                 <StatusBadge status={c.status} />
+                {showResolveActions ? (
+                  <SystemHealthCheckActions
+                    checkKey={c.check_key}
+                    resolved={Boolean(c.resolved_at)}
+                  />
+                ) : null}
                 {showTaskAction && actionable ? (
                   <CreateTaskFromContextButton
                     title={`${dataGroup ? "Datenqualität prüfen" : "System prüfen"}: ${c.title ?? c.check_key}`}
