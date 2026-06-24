@@ -92,6 +92,46 @@ revoke all on function swift_v2.cockpit_get_outreach_ai_snapshot(text,uuid) from
 grant execute on function swift_v2.cockpit_get_outreach_ai_snapshot(text,uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
+-- 1b) Lightweight preflight: does an active (non-archived) draft already exist?
+--     Used by the Edge Function to avoid spending AI tokens when generation
+--     would be rejected anyway. NOT a substitute for the authoritative
+--     duplicate guard inside cockpit_store_ai_outreach_draft (race protection).
+--     Same access contract as snapshot/store (writer role + Nachlass auth +
+--     ownership via v_cockpit_watchlist_internal).
+-- ---------------------------------------------------------------------------
+create or replace function swift_v2.cockpit_has_active_outreach_draft(
+    p_watch_kind text, p_watch_id uuid
+) returns boolean language plpgsql security definer
+  set search_path = swift_v2, public, pg_catalog
+as $$
+declare
+    v_role text := swift_v2._cockpit_writer_role();
+    v_uid  uuid := (select auth.uid());
+    r      swift_v2.v_cockpit_watchlist_internal%rowtype;
+begin
+    if p_watch_kind not in ('company','nachlass') then raise exception 'invalid_kind'; end if;
+    if p_watch_kind = 'nachlass'
+       and not exists (select 1 from swift_v2.cockpit_user_profiles p
+                       where p.user_id = v_uid and p.is_active and p.nachlass_authorized) then
+        raise exception 'nachlass_not_authorized';
+    end if;
+
+    -- Ownership + active-user gate + Nachlass auth enforced by the view.
+    select * into r from swift_v2.v_cockpit_watchlist_internal
+     where kind = p_watch_kind and watch_id = p_watch_id;
+    if r.watch_id is null then raise exception 'watchlist_item_not_found'; end if;
+
+    return exists (
+        select 1 from swift_v2.cockpit_outreach_drafts d
+        where d.watch_kind = p_watch_kind and d.watch_id = p_watch_id
+          and d.status <> 'archived'
+    );
+end;
+$$;
+revoke all on function swift_v2.cockpit_has_active_outreach_draft(text,uuid) from public, anon;
+grant execute on function swift_v2.cockpit_has_active_outreach_draft(text,uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- 2) Store an AI-generated outreach draft into the existing draft system.
 --    Recipient name/email derive from the authoritative internal view, NOT the
 --    AI output. Refuses to overwrite an existing active (non-archived) draft

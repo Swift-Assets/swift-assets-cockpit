@@ -210,6 +210,22 @@ Deno.serve(async (req: Request) => {
   }
   const snapshot = snap.data;
 
+  // 1b) Preflight: avoid spending AI tokens if an active draft already exists.
+  //     Skipped when replacing. The authoritative duplicate guard still lives
+  //     inside cockpit_store_ai_outreach_draft (race protection).
+  if (!replaceExisting) {
+    const pre = await supabase.rpc("cockpit_has_active_outreach_draft", {
+      p_watch_kind: watchKind,
+      p_watch_id: watchId,
+    });
+    if (pre.error) {
+      return jsonResponse({ ok: false, error: pre.error.message }, 400);
+    }
+    if (pre.data === true) {
+      return jsonResponse({ ok: false, error: "active_draft_exists" }, 400);
+    }
+  }
+
   // 2) Provider selection (server-side only). OpenAI primary per phase spec.
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
