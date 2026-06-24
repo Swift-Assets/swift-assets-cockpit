@@ -3,29 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { COCKPIT_NAV } from "@/lib/cockpit/nav";
+import { BirdMark, Wordmark } from "@/components/cockpit/brand";
 import { cn } from "@/lib/utils";
 
 export function CockpitSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-[15rem] shrink-0 flex-col border-r border-border bg-card md:flex">
-      {/* Brand lockup */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
-        <div
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[0.7rem] font-bold text-primary-foreground"
-          aria-hidden
-        >
-          SA
-        </div>
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-sm font-semibold tracking-tight">
-            Swift Assets
-          </span>
-          <span className="truncate text-[0.7rem] text-muted-foreground">
-            Internal Cockpit
-          </span>
-        </div>
+    <aside className="sticky top-0 hidden h-screen w-[15.5rem] shrink-0 flex-col border-r border-border bg-card md:flex">
+      {/* Brand lockup: bird + halo + wordmark */}
+      <div className="flex h-16 items-center gap-3 border-b border-border px-5">
+        <BirdMark size={34} />
+        <Wordmark size="sm" />
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">

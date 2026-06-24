@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/cockpit/dashboard-card";
+import { PageHeader } from "@/components/cockpit/page-header";
 import {
   getOperationsData,
   getSystemHealth,
@@ -48,19 +48,12 @@ export default async function OperationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">Operations</h1>
-          <p className="text-sm text-muted-foreground">
-            Betriebsübersicht. Live-Status aus sicheren Views; weitere Module
-            folgen, sobald Datenquellen vorhanden sind.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <RunHealthCheckButton />
-          <Badge variant="green">Phase 7A · Betrieb</Badge>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="System & Betrieb"
+        title="Operations"
+        lead="Betriebsübersicht der Pipeline und Systemprüfungen. Live-Status aus sicheren Views — getrennt vom Akquise-Workflow."
+        action={<RunHealthCheckButton />}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* 1. Data Ingestion — live (v_daily_run_log) */}

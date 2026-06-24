@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/cockpit/empty-state";
+import { PageHeader } from "@/components/cockpit/page-header";
 import { KeywordAlertManager } from "@/components/cockpit/keyword-alert-manager";
 import {
   getKeywordAlertMatches,
@@ -24,17 +24,11 @@ export default async function KeywordAlertsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">Keyword-Alerts</h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Eigene Schlüsselwörter definieren und neue Insolvenzbekanntmachungen
-            automatisch überwachen. E-Mail-Benachrichtigung folgt in einer
-            späteren Phase.
-          </p>
-        </div>
-        <Badge variant="green">Phase 7A · Alerts</Badge>
-      </div>
+      <PageHeader
+        eyebrow="Überwachung"
+        title="Keyword-Alerts"
+        lead="Eigene Schlüsselwörter definieren und neue Insolvenzbekanntmachungen automatisch überwachen. E-Mail-Benachrichtigung folgt in einer späteren Phase."
+      />
 
       {backendReady ? (
         <KeywordAlertManager rules={rules.rows} matches={matches.rows} />

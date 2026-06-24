@@ -3,49 +3,39 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Swift Assets brand palette (dark, monochrome, editorial) — derived from the
+   * official website: near-black canvas, white headlines, muted-gray secondary
+   * text, hairline borders, restrained status accents. White is the "primary"
+   * (mirrors the white bird-in-circle and outlined CTAs).
+   */
   :root {
-    /* Canvas vs. surfaces: a calm near-white app background with pure-white
-       cards gives the premium "data platform" depth (Linear/Attio style). */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 46%;
-    /* Near-black navy primary — serious, not flashy. */
-    --primary: 222 47% 17%;
-    --primary-foreground: 210 40% 99%;
-    --border: 214 24% 90%;
-    --input: 214 24% 90%;
-    --ring: 222 47% 40%;
-    --radius: 0.625rem;
+    --background: 224 22% 6%;
+    --foreground: 0 0% 98%;
+    --card: 222 18% 9%;
+    --card-foreground: 0 0% 98%;
+    --muted: 222 14% 14%;
+    --muted-foreground: 220 9% 62%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 224 30% 8%;
+    --border: 220 12% 17%;
+    --input: 220 12% 17%;
+    --ring: 0 0% 80%;
+    --radius: 0.5rem;
 
-    /* Inter when available (most design machines have it), else a high-quality
-       system stack. No webfont network dependency — deploy-safe. */
+    /* Inter-preferring system stack — no webfont network dependency. */
     --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
       "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-    /* Subtle elevation tuned for light surfaces. */
-    --shadow-card: 0 1px 2px 0 hsl(222 47% 11% / 0.04),
-      0 1px 3px 0 hsl(222 47% 11% / 0.03);
-    --shadow-pop: 0 10px 30px -12px hsl(222 47% 11% / 0.18),
-      0 4px 8px -4px hsl(222 47% 11% / 0.08);
-  }
+    /* Restrained, slightly desaturated status hues for a premium feel. */
+    --status-green: 150 38% 46%;
+    --status-yellow: 40 70% 55%;
+    --status-red: 0 62% 55%;
+    --status-blue: 213 45% 62%;
+    --status-gray: 220 9% 55%;
 
-  .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 10%;
-    --card-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 213 27% 84%;
-    --shadow-card: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
-    --shadow-pop: 0 10px 30px -12px hsl(0 0% 0% / 0.6);
+    --shadow-card: 0 1px 2px 0 hsl(0 0% 0% / 0.5);
+    --shadow-pop: 0 20px 50px -20px hsl(0 0% 0% / 0.7);
   }
 
   * {
@@ -58,14 +48,41 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* Tabular figures everywhere numbers matter (tables, metrics). */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 }
 
+@layer components {
+  /* Uppercase, wide-tracked section label (website "KONTAKT"/"LEISTUNGEN"). */
+  .eyebrow {
+    @apply text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground;
+  }
+
+  /*
+   * Faded circular halo reused as the core brand motif behind the bird mark.
+   * A soft radial glow plus a thin ring — subtle, never noisy.
+   */
+  .brand-halo {
+    position: relative;
+  }
+  .brand-halo::before {
+    content: "";
+    position: absolute;
+    inset: -42%;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle at center,
+      hsl(0 0% 100% / 0.1) 0%,
+      hsl(0 0% 100% / 0.04) 38%,
+      transparent 68%
+    );
+    pointer-events: none;
+  }
+}
+
 @layer utilities {
-  /* Quiet, thin scrollbars that match the calm aesthetic. */
+  /* Quiet, thin scrollbars matching the dark canvas. */
   .cockpit-scroll {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;

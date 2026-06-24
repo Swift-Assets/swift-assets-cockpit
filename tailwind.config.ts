@@ -42,13 +42,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
-        // Traffic-light statuses used across cockpit modules.
+        // Traffic-light statuses (restrained; tied to brand tokens).
         status: {
-          green: "hsl(142 64% 38%)",
-          yellow: "hsl(35 92% 42%)",
-          red: "hsl(0 72% 48%)",
-          blue: "hsl(217 79% 50%)",
-          gray: "hsl(215 16% 55%)",
+          green: "hsl(var(--status-green))",
+          yellow: "hsl(var(--status-yellow))",
+          red: "hsl(var(--status-red))",
+          blue: "hsl(var(--status-blue))",
+          gray: "hsl(var(--status-gray))",
         },
       },
       borderRadius: {

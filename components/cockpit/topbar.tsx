@@ -11,12 +11,8 @@ function initials(name: string): string {
 export function CockpitTopbar({ profile }: { profile: CockpitProfile }) {
   const name = profile.displayName ?? profile.email ?? "Unbekannt";
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-5 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium text-foreground">Swift Assets V2</span>
-        <span className="text-muted-foreground/50">/</span>
-        <span className="text-muted-foreground">Internal Cockpit</span>
-      </div>
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="eyebrow">Swift Assets · Internal Cockpit</div>
 
       <div className="flex items-center gap-3">
         <Badge variant="outline" className="capitalize">

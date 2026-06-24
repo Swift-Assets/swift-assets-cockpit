@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { BirdMark } from "@/components/cockpit/brand";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -58,13 +59,25 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-6">
+      {/* Brand hero: bird + faded halo */}
+      <div className="mb-10 flex flex-col items-center text-center">
+        <BirdMark size={84} />
+        <h1 className="mt-7 text-2xl font-semibold uppercase tracking-[0.22em] text-foreground">
+          Swift Assets
+        </h1>
+        <p className="mt-2 text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
+          UG (haftungsbeschränkt) · Internal Cockpit
+        </p>
+        <div className="mt-5 h-px w-12 bg-border" aria-hidden />
+      </div>
+
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Cockpit Anmeldung</CardTitle>
+          <CardTitle className="text-base">Interner Zugang</CardTitle>
           <CardDescription>
-            Interner Zugang. Bitte geben Sie Ihre Firmen-E-Mail ein, um einen
-            Anmeldelink zu erhalten.
+            Bitte geben Sie Ihre Firmen-E-Mail ein, um einen Anmeldelink zu
+            erhalten. Kein öffentlicher Zugang.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -77,7 +90,7 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <label
                   htmlFor="email"
-                  className="text-sm font-medium text-foreground"
+                  className="eyebrow"
                 >
                   E-Mail
                 </label>
@@ -89,7 +102,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@swift-assets.de"
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
               <Button

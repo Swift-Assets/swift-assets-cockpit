@@ -6,8 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/cockpit/empty-state";
+import { PageHeader } from "@/components/cockpit/page-header";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
 import { WatchlistPipeline } from "@/components/cockpit/watchlist-pipeline";
@@ -61,16 +61,11 @@ export default async function WatchlistPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">Watchlist</h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Interne Akquise-Watchlist (Firmen & Nachlass) — angereicherte Daten,
-            Bearbeitung, Follow-ups und Anfrage-Entwürfe an einem Ort.
-          </p>
-        </div>
-        <Badge variant="green">Core 3 · Akquise</Badge>
-      </div>
+      <PageHeader
+        eyebrow="Akquise-Pipeline"
+        title="Watchlist"
+        lead="Interne Akquise-Watchlist (Firmen & Nachlass) — angereicherte Daten, Bearbeitung, Follow-ups und Anfrage-Entwürfe an einem Ort."
+      />
 
       <WatchlistAddPanel watchedCompanyIds={watchedCompanyIds} />
 

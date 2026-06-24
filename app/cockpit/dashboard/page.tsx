@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, Clock, Mail, Sparkles, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "@/components/cockpit/metric-card";
+import { PageHeader } from "@/components/cockpit/page-header";
 import { SectionCard } from "@/components/cockpit/section-card";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import { StatusBadge } from "@/components/cockpit/status-badge";
@@ -76,18 +77,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">
-            Akquise-Cockpit
-          </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Operative Übersicht der Insolvenz-Akquise: neue relevante Fälle,
-            Akquise-Fenster, Phasen, Verwalter und fällige Follow-ups.
-          </p>
-        </div>
-        <Badge variant="green">Phase 7A · Akquise</Badge>
-      </div>
+      <PageHeader
+        eyebrow="Akquise-Cockpit"
+        title="Operative Akquise-Übersicht"
+        lead="Neue relevante Fälle, Akquise-Fenster, Verfahrensphasen, Insolvenzverwalter und fällige Follow-ups — auf einen Blick."
+      />
 
       {/* 1. Acquisition window overview */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">

@@ -35,7 +35,7 @@ function completionHtml(redirectTo: string): string {
 <meta name="robots" content="noindex, nofollow" />
 <title>Anmeldung…</title>
 </head>
-<body style="font-family:ui-sans-serif,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;color:#0f172a;background:#f8fafc;">
+<body style="font-family:ui-sans-serif,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;color:#fafafa;background:#0b0d12;">
 <main style="text-align:center;">
 <p style="font-size:14px;">Anmeldung wird abgeschlossen…</p>
 <noscript><p style="font-size:14px;">Bitte fortfahren: <a href="${redirectTo}">Weiter zum Cockpit</a></p></noscript>

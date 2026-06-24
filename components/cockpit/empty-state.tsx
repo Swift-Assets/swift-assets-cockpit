@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BirdMark } from "@/components/cockpit/brand";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,14 +27,18 @@ export function EmptyState({
         className,
       )}
     >
-      {icon ? (
-        <div
-          className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-card"
-          aria-hidden
-        >
-          {icon}
-        </div>
-      ) : null}
+      <div className="mb-5 text-muted-foreground">
+        {icon ? (
+          <div
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card"
+            aria-hidden
+          >
+            {icon}
+          </div>
+        ) : (
+          <BirdMark size={48} />
+        )}
+      </div>
       <h3 className="text-sm font-semibold tracking-tight text-foreground">
         {title}
       </h3>
