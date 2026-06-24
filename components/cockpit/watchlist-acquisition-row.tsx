@@ -17,6 +17,7 @@ import {
 } from "@/app/cockpit/watchlist/actions";
 import { CreateTaskFromContextButton } from "@/components/cockpit/create-task-from-context-button";
 import { OutreachCreateButton } from "@/components/cockpit/outreach-create-button";
+import { AiOutreachCreateButton } from "@/components/cockpit/ai-outreach-create-button";
 import { hasOpenTaskForContext } from "@/lib/cockpit/tasks";
 import type { InternalWatchlistRow } from "@/lib/cockpit/watchlist-internal.queries";
 import { AiReviewSection } from "@/components/cockpit/ai-review-section";
@@ -365,6 +366,13 @@ export function WatchlistAcquisitionRow({
                 />
                 <Field label="Grund" value={row.outreach_blocked_reason ?? "—"} />
                 <div className="pt-1">{outreachButton}</div>
+                <div className="pt-1">
+                  <AiOutreachCreateButton
+                    kind={row.kind}
+                    watchId={row.watch_id}
+                    hasExistingDraft={hasExistingDraft}
+                  />
+                </div>
               </dl>
 
               {/* F. Notes & follow-up */}
