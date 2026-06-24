@@ -1,8 +1,3 @@
-"use client";
-
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { getSiteUrl } from "@/lib/env";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,51 +7,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BirdMark } from "@/components/cockpit/brand";
+import { safeRedirectPath } from "@/lib/auth/temp-access";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
-  const [message, setMessage] = useState<string | null>(null);
+export const dynamic = "force-dynamic";
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("sending");
-    setMessage(null);
-    try {
-      const supabase = createClient();
-      // Preserve a safe, same-origin deep-link target across the magic link so
-      // the user returns to where they were headed. Only relative "/..." paths
-      // are kept; the callback re-validates this too.
-      let callback = `${getSiteUrl()}/auth/callback`;
-      if (typeof window !== "undefined") {
-        const from = new URLSearchParams(window.location.search).get(
-          "redirectedFrom",
-        );
-        if (from && from.startsWith("/") && !from.startsWith("//")) {
-          callback += `?redirectedFrom=${encodeURIComponent(from)}`;
-        }
-      }
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          // No public signup: only existing cockpit users can receive a link.
-          shouldCreateUser: false,
-          emailRedirectTo: callback,
-        },
-      });
-      if (error) throw error;
-      setStatus("sent");
-    } catch (err) {
-      setStatus("error");
-      setMessage(
-        err instanceof Error
-          ? err.message
-          : "Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
-      );
-    }
-  }
+/**
+ * TEMPORARY: Magic Link disabled during private UI refinement phase.
+ *
+ * Login is currently a fast access-code gate: the form posts the code to
+ * /auth/access (server-only validation against TEMP_COCKPIT_ACCESS_CODE), which
+ * sets the httpOnly access cookie and redirects into the cockpit. No email, no
+ * Supabase request, no rate limit. The Magic-Link form is preserved in
+ * components/cockpit/magic-link-form.tsx for easy re-enable.
+ */
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirectedFrom?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+  const redirectedFrom = safeRedirectPath(params.redirectedFrom);
+  const hasError = params.error === "code";
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background p-6">
@@ -76,47 +47,37 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle className="text-base">Interner Zugang</CardTitle>
           <CardDescription>
-            Bitte geben Sie Ihre Firmen-E-Mail ein, um einen Anmeldelink zu
-            erhalten. Kein öffentlicher Zugang.
+            Bitte geben Sie den Zugangscode ein, um das Cockpit zu öffnen. Kein
+            öffentlicher Zugang.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {status === "sent" ? (
-            <p className="text-sm text-status-green">
-              Anmeldelink wurde versendet. Bitte prüfen Sie Ihr Postfach.
-            </p>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="email"
-                  className="eyebrow"
-                >
-                  E-Mail
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@swift-assets.de"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={status === "sending"}
-              >
-                {status === "sending" ? "Wird gesendet…" : "Anmeldelink senden"}
-              </Button>
-              {status === "error" && message ? (
-                <p className="text-sm text-status-red">{message}</p>
-              ) : null}
-            </form>
-          )}
+          <form action="/auth/access" method="post" className="space-y-4">
+            <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
+            <div className="space-y-1.5">
+              <label htmlFor="code" className="eyebrow">
+                Zugangscode
+              </label>
+              <input
+                id="code"
+                name="code"
+                type="password"
+                required
+                autoComplete="off"
+                autoFocus
+                placeholder="••••••••"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              Cockpit öffnen
+            </Button>
+            {hasError ? (
+              <p className="text-sm text-status-red">
+                Ungültiger Zugangscode. Bitte erneut versuchen.
+              </p>
+            ) : null}
+          </form>
         </CardContent>
       </Card>
     </main>
