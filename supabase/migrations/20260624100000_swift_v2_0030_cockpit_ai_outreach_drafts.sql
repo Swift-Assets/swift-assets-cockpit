@@ -270,8 +270,11 @@ grant execute on function swift_v2.cockpit_store_ai_outreach_draft(
 
 -- ---------------------------------------------------------------------------
 -- 3) Recreate the safe read view with two additive, safe columns so the UI can
---    distinguish AI-generated drafts. Additive only — existing consumers that
---    select explicit columns are unaffected. Still excludes the metadata blob.
+--    distinguish AI-generated drafts. The existing 0028 column order is
+--    preserved EXACTLY and the new columns (generation_mode, ai_model_name) are
+--    APPENDED at the end — `create or replace view` cannot rename/reorder
+--    existing columns, only append. Existing consumers that select explicit
+--    columns are unaffected. Still excludes the metadata blob.
 -- ---------------------------------------------------------------------------
 create or replace view swift_v2.v_cockpit_outreach_drafts
   with (security_invoker = false) as
@@ -288,8 +291,6 @@ select
     d.body,
     d.language,
     d.status,
-    coalesce(d.metadata->>'generation_mode', 'manual') as generation_mode,
-    d.metadata->>'ai_model_name'                        as ai_model_name,
     d.created_by,
     cp.display_name as created_by_name,
     d.updated_by,
@@ -298,7 +299,10 @@ select
     d.updated_at,
     d.archived_at,
     (select count(*) from swift_v2.cockpit_outreach_events ev where ev.draft_id = d.draft_id) as event_count,
-    (select max(ev.created_at) from swift_v2.cockpit_outreach_events ev where ev.draft_id = d.draft_id) as latest_event_at
+    (select max(ev.created_at) from swift_v2.cockpit_outreach_events ev where ev.draft_id = d.draft_id) as latest_event_at,
+    -- Appended (new) columns:
+    coalesce(d.metadata->>'generation_mode', 'manual') as generation_mode,
+    d.metadata->>'ai_model_name'                        as ai_model_name
 from swift_v2.cockpit_outreach_drafts d
 left join swift_v2.cockpit_user_profiles cp on cp.user_id = d.created_by
 left join swift_v2.cockpit_user_profiles up on up.user_id = d.updated_by
