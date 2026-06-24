@@ -25,12 +25,18 @@
 -- Safety:
 --   * NO email sending, NO SMTP, NO mailto. NO auto-send. status stays 'draft'.
 --   * Snapshot uses ONLY approved safe fields: no raw announcement text, no
---     source excerpt, no detection reasoning, no birth dates, no private
---     natural-person addresses, no deceased/person names. Administrator
---     (Insolvenzverwalter) contact is a professional contact, exposed
---     internally only.
---   * For Nachlass: only safe label (Nachlassinsolvenzverfahren, Az. ...);
---     deceased identity never enters the snapshot. Requires nachlass_authorized.
+--     source excerpt, no detection reasoning, no private natural-person
+--     addresses. Administrator (Insolvenzverwalter) contact is a professional
+--     contact, exposed internally only.
+--   * For Nachlass: the deceased person's NAME is included for case
+--     identification (the administrator cannot reliably identify the case
+--     otherwise). Sourced as a STRUCTURED column
+--     (raw_insolvency_announcements.debtor_name) — never the raw announcement
+--     text, excerpt, reasoning, or address. Date of birth is NOT included
+--     because no birth-date column exists in the data layer. Still only the
+--     safe label is used as display label; no city/address. Requires
+--     nachlass_authorized (enforced by the RPC) — non-authorized users never
+--     reach this path and the outreach draft view stays gated.
 --   * Writes via SECURITY DEFINER RPCs gated by _cockpit_writer_role()
 --     (analyst/lead/admin). created_by/actor derived from auth.uid().
 --   * Bundesanzeiger=retired -> status label only; never fabricated figures.
@@ -50,6 +56,7 @@ declare
     v_role text := swift_v2._cockpit_writer_role();
     v_uid  uuid := (select auth.uid());
     r      swift_v2.v_cockpit_watchlist_internal%rowtype;
+    v_deceased_name text := null;
 begin
     if p_watch_kind not in ('company','nachlass') then raise exception 'invalid_kind'; end if;
     if p_watch_kind = 'nachlass'
@@ -64,12 +71,30 @@ begin
      where kind = p_watch_kind and watch_id = p_watch_id;
     if r.watch_id is null then raise exception 'watchlist_item_not_found'; end if;
 
-    -- SAFE snapshot only. No raw text / no natural-person PII.
+    -- Nachlass identity (INTERNAL only). nachlass_authorized + ownership are
+    -- already enforced above, so reaching here means the caller is allowed to
+    -- see the deceased person's name for case identification. We read ONLY the
+    -- STRUCTURED debtor_name column from the source announcement (the same value
+    -- exposed as deceased_name in v_cockpit_nachlass_review_full) — NOT the raw
+    -- announcement text, source excerpt, detection reasoning, city, or address.
+    -- No date-of-birth column exists in the data layer, so birth date is null.
+    if r.kind = 'nachlass' then
+        select a.debtor_name into v_deceased_name
+        from swift_v2.nachlass_detection_results d
+        join swift_v2.raw_insolvency_announcements a on a.id::text = d.source_announcement_id
+        where d.detection_id = r.detection_id
+        limit 1;
+    end if;
+
+    -- SAFE snapshot. No raw text / no address. For Nachlass: name only.
     return jsonb_build_object(
         'kind', r.kind,
         'safe_display_label', r.safe_display_label,
         -- display_title (the real company name) only for company cases.
         'display_title', case when r.kind = 'company' then r.display_title else null end,
+        -- deceased_name only for Nachlass (gated above); birth date unavailable.
+        'deceased_name', case when r.kind = 'nachlass' then v_deceased_name else null end,
+        'deceased_birth_date', null,
         'court', r.court,
         'aktenzeichen', r.aktenzeichen,
         'latest_phase', r.latest_phase,

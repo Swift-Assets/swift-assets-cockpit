@@ -15,8 +15,10 @@
 //   6. RPC cockpit_store_ai_outreach_draft -> draft_id (status 'draft').
 //
 // Privacy: prompt uses ONLY the safe snapshot. No raw announcement text, no
-// source excerpt, no detection reasoning, no deceased/person names, no birth
-// dates, no private addresses. The recipient stored on the draft is derived
+// source excerpt, no detection reasoning, no private addresses. For Nachlass
+// (internal, nachlass_authorized only) the snapshot MAY include the deceased
+// person's name for case identification; no date of birth exists in the data
+// layer, so it is never present. The recipient stored on the draft is derived
 // server-side in the RPC from the authoritative view, NOT from the AI output.
 // No email is ever sent. No secrets / raw provider responses / full snapshot
 // are logged.
@@ -35,7 +37,10 @@ Strikte Regeln:
 - Erfinde keine Fakten und keine Finanzzahlen. Wenn financial_data_status nicht "vorhanden" ist oder bundesanzeiger_status = retired/unavailable: erwähne KEINE Finanzzahlen.
 - Ton: professionell, präzise, juristisch zurückhaltend, deutscher Geschäftsstil. Kein Druck, keine Rechtsbehauptungen.
 - Für company-Fälle: nenne den Firmennamen (display_title) und das Aktenzeichen.
-- Für nachlass-Fälle: verwende AUSSCHLIESSLICH die sichere Formulierung "Nachlassinsolvenzverfahren, Az. ..." und das Gericht. Nenne KEINE verstorbene Person, keinen Namen, kein Geburtsdatum, keine Privatadresse, keinen Rohtext.
+- Für nachlass-Fälle (interne Verwendung): Du DARFST den Namen der verstorbenen Person (deceased_name) und das Geburtsdatum (deceased_birth_date) NUR verwenden, wenn sie im Snapshot enthalten sind, und ausschließlich zur Identifikation des Falls. Erfinde KEINE Identitätsdaten. Nenne KEINE Privatadresse, keine Straße, keine PLZ, keinen Wohnort und keinen Rohtext.
+  * Wenn deceased_name fehlt (null/leer): verwende nur "Nachlassinsolvenzverfahren, Az. [aktenzeichen]".
+  * Wenn deceased_name vorhanden und deceased_birth_date vorhanden ist: verwende "Nachlassinsolvenzverfahren betreffend [deceased_name], geb. [deceased_birth_date], Az. [aktenzeichen]".
+  * Wenn deceased_name vorhanden, deceased_birth_date aber fehlt: verwende "Nachlassinsolvenzverfahren betreffend [deceased_name], Az. [aktenzeichen]".
 - Frage höflich, ob es akquise-relevante Vermögenswerte, fortführungsfähige Betriebsteile, Warenbestände, Domains, Ausstattung/Maschinen, Forderungen oder sonstige übertragbare Assets gibt (nur soweit passend).
 - Frage, ob der/die Verwalter(in) oder die Kanzlei weitere Informationen oder einen Ansprechpartner/Prozess bereitstellen kann.
 - Wenn administrator_email fehlt: verfasse den Text trotzdem, setze recipient_email auf null und füge "missing_recipient_email" zu missing_fields hinzu.
