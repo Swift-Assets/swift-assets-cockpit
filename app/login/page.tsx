@@ -25,12 +25,24 @@ export default function LoginPage() {
     setMessage(null);
     try {
       const supabase = createClient();
+      // Preserve a safe, same-origin deep-link target across the magic link so
+      // the user returns to where they were headed. Only relative "/..." paths
+      // are kept; the callback re-validates this too.
+      let callback = `${getSiteUrl()}/auth/callback`;
+      if (typeof window !== "undefined") {
+        const from = new URLSearchParams(window.location.search).get(
+          "redirectedFrom",
+        );
+        if (from && from.startsWith("/") && !from.startsWith("//")) {
+          callback += `?redirectedFrom=${encodeURIComponent(from)}`;
+        }
+      }
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           // No public signup: only existing cockpit users can receive a link.
           shouldCreateUser: false,
-          emailRedirectTo: `${getSiteUrl()}/auth/callback`,
+          emailRedirectTo: callback,
         },
       });
       if (error) throw error;
