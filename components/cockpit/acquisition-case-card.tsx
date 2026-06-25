@@ -16,7 +16,10 @@ import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-draf
 import { BekanntmachungTimeline } from "@/components/cockpit/bekanntmachung-timeline";
 import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
 import { chooseBestAdministratorContact } from "@/lib/cockpit/administrator-contact";
-import { isMeaningfulCompanyActivitySummary } from "@/lib/cockpit/case-summary-ar";
+import {
+  isMeaningfulCompanyActivitySummary,
+  softenMissingDataFlags,
+} from "@/lib/cockpit/case-summary-ar";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -124,6 +127,12 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
     isMeaningfulCompanyActivitySummary(data.companyActivityAr, data.title)
       ? (data.companyActivityAr as string)
       : null;
+  // Soften "no_administrator_*" gaps for phases where an appointment is not
+  // expected (Anordnung/Prüfungstermin/…); a hard gap only for Eröffnung.
+  const missingDataFlags = softenMissingDataFlags(
+    data.missingDataFlags,
+    data.latestPhase,
+  );
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     setError(null);
@@ -291,7 +300,7 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               <Row label="Finanzdaten" value={data.financialDataStatus} />
               <Row
                 label="Lücken"
-                value={data.missingDataFlags.length > 0 ? data.missingDataFlags.join(", ") : null}
+                value={missingDataFlags.length > 0 ? missingDataFlags.join(", ") : null}
               />
               <Row
                 label="Qualität"

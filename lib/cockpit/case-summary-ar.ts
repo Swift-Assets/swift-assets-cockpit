@@ -34,7 +34,7 @@ const PHASE_DE: Record<string, string> = {
 
 /** Short Arabic gloss per internal phase key. */
 const PHASE_AR: Record<string, string> = {
-  vorlaeufig: "إجراء إعسار أولي (تدابير تأمينية / حارس مؤقت)",
+  vorlaeufig: "مرحلة تمهيدية / تدبير قضائي مبكر ضمن Insolvenzverfahren (Anordnung / Sicherungsmaßnahme) قبل der Verteilung",
   eroeffnung: "افتتاح إجراء الإعسار وتعيين مدير الإعسار",
   berichtstermin: "موعد تقديم تقرير مدير الإعسار",
   pruefungstermin: "موعد فحص الديون المُعلَنة",
@@ -85,11 +85,46 @@ export function describeAcquisitionRelevanceAr(event: {
   return "غير مصنّف — يتطلب مراجعة يدوية.";
 }
 
-/** Arabic short explanation for one timeline event (date + phase + relevance). */
+/** True if a timeline event carries ANY structured administrator field. */
+function eventHasAdministrator(event: CaseTimelineEvent): boolean {
+  return Boolean(
+    (event.administratorName && event.administratorName.trim()) ||
+      (event.administratorEmail && event.administratorEmail.trim()) ||
+      (event.administratorPhone && event.administratorPhone.trim()) ||
+      (event.administratorAddress && event.administratorAddress.trim()),
+  );
+}
+
+/**
+ * Arabic short explanation for one timeline event. CONSERVATIVE: it never claims
+ * an Insolvenzverwalter was appointed from phase/type alone — appointment wording
+ * is used only when the event itself carries structured administrator fields.
+ */
 export function buildArabicTimelineEventSummary(event: CaseTimelineEvent): string {
-  const ar = describePhaseAr(event.insolvencyPhase);
-  const rel = describeAcquisitionRelevanceAr(event);
-  return `${ar} — ${rel}`;
+  const phase = event.insolvencyPhase;
+  const hasAdmin = eventHasAdministrator(event);
+
+  switch (phase) {
+    case "vorlaeufig":
+      return hasAdmin
+        ? "إجراء مبكر ضمن Insolvenzverfahren قبل der Verteilung، وتوجد بيانات منظمة لـ Insolvenzverwalter."
+        : "إجراء مبكر ضمن Insolvenzverfahren قبل der Verteilung. لا توجد في هذا الإعلان بيانات تعيين منظمة لـ Insolvenzverwalter.";
+    case "pruefungstermin":
+      return "موعد فحص الديون المعلنة ضمن Insolvenzverfahren. لا يعني هذا الإعلان وحده وجود تعيين جديد لـ Insolvenzverwalter.";
+    case "berichtstermin":
+      return "موعد تقديم تقرير ضمن Insolvenzverfahren قبل der Verteilung.";
+    case "eroeffnung":
+      return hasAdmin
+        ? "Eröffnung des Insolvenzverfahrens مع بيانات منظمة عن Insolvenzverwalter."
+        : "Eröffnung des Insolvenzverfahrens. لا تظهر في هذا الإعلان بيانات منظمة لـ Insolvenzverwalter.";
+    case "verwertung":
+      return "مرحلة تسييل/بيع أصول الكتلة ضمن Insolvenzverfahren.";
+    case null:
+    case "unknown":
+      return "إجراء ضمن Insolvenzverfahren غير مصنّف بدقة — يلزم فحص يدوي.";
+    default:
+      return "مرحلة إجرائية/متأخرة غالبًا للمتابعة فقط، وليست أولوية استحواذ إلا إذا ظهرت معلومات أصول مهمة.";
+  }
 }
 
 export interface ArabicCaseSummaryInput {
@@ -277,8 +312,8 @@ export function buildArabicInsolvencyCaseSummary(
   let s3: string;
   if (pre === true) {
     s3 = input.hasAdministrator
-      ? "الحالة ما زالت قبل Verteilung (akquiserelevant)، وتتوفر بيانات Insolvenzverwalter منظمة — يمكن المراجعة والتواصل عند وجود سبب استحواذ واضح."
-      : "الحالة ما زالت قبل Verteilung (akquiserelevant)، لكن لا تظهر بيانات Insolvenzverwalter منظمة في الإعلان الحالي — يلزم فحص يدوي.";
+      ? "الحالة ما زالت قبل der Verteilung (akquiserelevant)، وتوجد بيانات منظمة عن Insolvenzverwalter — يمكن مراجعة التواصل معه عند وجود سبب استحواذ واضح."
+      : "الحالة ما زالت قبل der Verteilung (akquiserelevant). لا تظهر بيانات منظمة عن Insolvenzverwalter في هذه Bekanntmachung، وهذا قد يكون صحيحًا إذا كان النوع مثل Anordnung أو Prüfungstermin ولا يحتوي كتلة تعيين.";
   } else if (phase === "unknown" || phase === null) {
     s3 = "يلزم فحص يدوي لتحديد الطور والملاءمة قبل أي إجراء.";
   } else {
@@ -286,4 +321,38 @@ export function buildArabicInsolvencyCaseSummary(
   }
 
   return [s1, s2, s3].join(" ");
+}
+
+const ADMIN_MISSING_FLAGS = new Set([
+  "no_administrator_name",
+  "no_administrator_email",
+  "no_administrator_phone",
+]);
+
+/**
+ * Display-time softening of data-quality flags: a missing Insolvenzverwalter is
+ * only a real gap when the phase normally carries an appointment (Eröffnung).
+ * For other types (Anordnung, Prüfungstermin, Berichtstermin …) the absence is
+ * often correct, so the hard "no_administrator_*" flags are collapsed into a
+ * single neutral "administrator_not_in_current_bekanntmachung". Pure UI mapping;
+ * the underlying DB flags are unchanged.
+ */
+export function softenMissingDataFlags(
+  flags: string[],
+  phase: string | null,
+): string[] {
+  const adminExpected = phase === "eroeffnung";
+  if (adminExpected) return flags;
+
+  const out: string[] = [];
+  let softened = false;
+  for (const f of flags) {
+    if (ADMIN_MISSING_FLAGS.has(f)) {
+      softened = true;
+      continue;
+    }
+    out.push(f);
+  }
+  if (softened) out.push("administrator_not_in_current_bekanntmachung");
+  return out;
 }
