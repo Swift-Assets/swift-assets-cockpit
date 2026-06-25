@@ -184,3 +184,106 @@ export function buildArabicCaseSummary(
 
   return { headlineAr, statusAr, relevanceAr, nextActionAr, riskFlagsAr };
 }
+
+/* ------------------------------------------------------------------ */
+/* PHASE 0048 — separate "company activity" from "insolvency case"      */
+/* ------------------------------------------------------------------ */
+
+/** Phrases signalling that a real business activity / sector is described. */
+const ACTIVITY_POSITIVE =
+  /(تعمل\s+في|تنشط\s+في|متخصص|في\s+مجال|في\s+قطاع|تقدّم|تقدم|تُقدّم|خدمات|منتجات|تجارة|صناعة|مطاعم|ضيافة|مخبوزات|مخبز|رعاية|بناء|نقل|عقار|tätig\s+(in|im)|Branche|Dienstleistung|Handel|Produkt|Gastronomie|Bäckerei)/i;
+
+/** Phrases signalling the text is NOT an activity description (insolvency/meta). */
+const ACTIVITY_UNKNOWN =
+  /(لم\s+يتم\s+تحديد\s+نشاط|لا\s+يمكن\s+تحديد\s+نشاط|نشاط[^.]{0,25}غير\s+(محدد|واضح|معروف)|غير\s+(محدد|واضح|معروف)[^.]{0,25}نشاط|لا\s+توجد\s+(معلومات|بيانات)[^.]{0,40}نشاط|nicht\s+klar\s+identifiziert|keine\s+(klaren|belastbaren)\s+(angaben|informationen)|activity\s+not\s+clearly|no\s+clear\s+information\s+about\s+(its\s+)?(business\s+)?activity)/i;
+
+/**
+ * Display-time guard: is this Arabic text a MEANINGFUL company-activity summary
+ * (answers "what does the firm do?") rather than an insolvency/registration/
+ * no-data blurb? Pure heuristic over structured text — does NOT touch the DB.
+ *
+ * Meaningful = names a sector/activity AND is not dominated by an
+ * "activity unknown" / pure-insolvency-status statement.
+ */
+export function isMeaningfulCompanyActivitySummary(
+  text: string | null | undefined,
+  _companyName?: string | null,
+): boolean {
+  const t = text?.trim();
+  if (!t || t.length < 12) return false;
+  if (ACTIVITY_UNKNOWN.test(t)) return false;
+  return ACTIVITY_POSITIVE.test(t);
+}
+
+function fmtDateDe(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new Intl.DateTimeFormat("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(value));
+  } catch {
+    return null;
+  }
+}
+
+export interface InsolvencyCaseSummaryInput {
+  companyName?: string | null;
+  latestPhase: string | null;
+  latestAnnouncementType: string | null;
+  latestPublicationDate: string | null;
+  court: string | null;
+  aktenzeichen?: string | null;
+  preVerteilung: boolean | null;
+  /** True if ANY structured Insolvenzverwalter field is present. */
+  hasAdministrator: boolean;
+  eventCount?: number;
+}
+
+/**
+ * Deterministic 2–4 sentence Arabic summary of the INSOLVENCY case (what the
+ * latest Bekanntmachung means operationally) — NOT the company's activity.
+ * German legal terms stay in German. No AI, no invented numbers.
+ */
+export function buildArabicInsolvencyCaseSummary(
+  input: InsolvencyCaseSummaryInput,
+): string {
+  const phase = input.latestPhase;
+  const typeDe = describeAnnouncementTypeDe(phase, input.latestAnnouncementType);
+  const date = fmtDateDe(input.latestPublicationDate);
+  const pre =
+    input.preVerteilung ?? (phase ? PRE_VERTEILUNG.has(phase) : null);
+
+  // Sentence 1 — what / when / where.
+  const where = [
+    date ? `بتاريخ ${date}` : null,
+    input.court ? `أمام ${input.court}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const s1 = `هذه Bekanntmachung من نوع ${typeDe}${where ? " " + where : ""}.`;
+
+  // Sentence 2 — what the phase means (per bucket).
+  const phaseAr = describePhaseAr(phase);
+  let s2: string;
+  if (phase === "unknown" || phase === null) {
+    s2 = "الطور غير مصنّف بدقة من البيانات المتاحة، وهذا إجراء ضمن مسار Insolvenzverfahren وليس وصفًا لنشاط الشركة.";
+  } else {
+    s2 = `${phaseAr} — وهو إجراء ضمن مسار Insolvenzverfahren وليس وصفًا لنشاط الشركة.`;
+  }
+
+  // Sentence 3 — relevance + admin presence + recommended action.
+  let s3: string;
+  if (pre === true) {
+    s3 = input.hasAdministrator
+      ? "الحالة ما زالت قبل Verteilung (akquiserelevant)، وتتوفر بيانات Insolvenzverwalter منظمة — يمكن المراجعة والتواصل عند وجود سبب استحواذ واضح."
+      : "الحالة ما زالت قبل Verteilung (akquiserelevant)، لكن لا تظهر بيانات Insolvenzverwalter منظمة في الإعلان الحالي — يلزم فحص يدوي.";
+  } else if (phase === "unknown" || phase === null) {
+    s3 = "يلزم فحص يدوي لتحديد الطور والملاءمة قبل أي إجراء.";
+  } else {
+    s3 = "تُصنّف غالبًا كـ monitor (مرحلة متأخرة/إجرائية) وليست أولوية إلا إذا ظهرت معلومات أصول مهمة.";
+  }
+
+  return [s1, s2, s3].join(" ");
+}

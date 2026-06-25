@@ -16,6 +16,7 @@ import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-draf
 import { BekanntmachungTimeline } from "@/components/cockpit/bekanntmachung-timeline";
 import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
 import { chooseBestAdministratorContact } from "@/lib/cockpit/administrator-contact";
+import { isMeaningfulCompanyActivitySummary } from "@/lib/cockpit/case-summary-ar";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -84,7 +85,7 @@ function fmtDate(value: string | null): string {
   }
 }
 
-const ACTIVITY_PLACEHOLDER = "وصف نشاط الشركة غير متوفر بعد.";
+const ACTIVITY_PLACEHOLDER = "نشاط الشركة غير معروف من البيانات المتاحة حاليًا.";
 
 function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
   const router = useRouter();
@@ -113,6 +114,16 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
     },
     timeline: data.timeline,
   });
+  const hasAdministrator = Boolean(
+    adminContact.name || adminContact.email || adminContact.phone || adminContact.address,
+  );
+  // Quality guard: only treat the enrichment text as a real activity description
+  // if it actually names a sector/activity (not an insolvency/registration blurb).
+  const activityText =
+    data.kind === "company" &&
+    isMeaningfulCompanyActivitySummary(data.companyActivityAr, data.title)
+      ? (data.companyActivityAr as string)
+      : null;
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     setError(null);
@@ -188,15 +199,13 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
             {fmtDate(data.latestPublicationDate)}
           </span>
         </div>
-        {/* Card exterior summary: for companies, "what does this company do?"
-            (business activity). The insolvency/acquisition AI review block has
-            been removed from the cards. Nachlass shows no exterior AI text. */}
+        {/* Card exterior summary: COMPANY ACTIVITY only ("what does this firm
+            do?"). Insolvency-status text is rejected by the quality guard and
+            replaced with a clear fallback. Nachlass shows no exterior text. */}
         {data.kind === "company" ? (
           <p dir="rtl" className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
             <span className="font-medium text-foreground">الوصف: </span>
-            {data.companyActivityAr?.trim()
-              ? data.companyActivityAr
-              : ACTIVITY_PLACEHOLDER}
+            {activityText ?? ACTIVITY_PLACEHOLDER}
           </p>
         ) : null}
       </button>
@@ -212,26 +221,12 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
         {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
       </button>
 
-      {/* Inline expanded detail (replaces the old right-side drawer) */}
+      {/* Inline expanded detail (replaces the old right-side drawer).
+          The company-activity paragraph is shown ONCE on the card exterior
+          (الوصف:) and intentionally NOT repeated here — the expanded view leads
+          with the insolvency case summary + timeline instead. */}
       {expanded ? (
         <div className="space-y-4 border-t border-border px-4 py-4">
-          {/* Unternehmenstätigkeit (AR) — full business-activity description */}
-          {data.kind === "company" ? (
-            <section className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="eyebrow">Unternehmenstätigkeit (AR)</p>
-                {data.companyActivityAr?.trim() ? (
-                  <Badge variant="muted">Quelle: AI-Enrichment</Badge>
-                ) : null}
-              </div>
-              <p dir="rtl" className="text-sm leading-relaxed text-foreground">
-                {data.companyActivityAr?.trim()
-                  ? data.companyActivityAr
-                  : ACTIVITY_PLACEHOLDER}
-              </p>
-            </section>
-          ) : null}
-
           {/* Fall */}
           <section className="space-y-1.5">
             <p className="eyebrow">Fall</p>
@@ -253,9 +248,13 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
           {data.kind === "company" ? (
             <BekanntmachungTimeline
               events={data.timeline}
-              fallbackPhase={data.latestPhase}
-              fallbackPreVerteilung={data.preVerteilung}
-              hasAdministratorEmail={Boolean(data.administratorEmail)}
+              companyName={data.title}
+              latestPhase={data.latestPhase}
+              latestAnnouncementType={data.latestAnnouncementType}
+              latestPublicationDate={data.latestPublicationDate}
+              preVerteilung={data.preVerteilung}
+              hasAdministrator={hasAdministrator}
+              hasAdministratorEmail={Boolean(adminContact.email)}
               court={data.court}
               aktenzeichen={data.aktenzeichen}
             />

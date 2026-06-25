@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
 import {
   buildArabicCaseSummary,
+  buildArabicInsolvencyCaseSummary,
   buildArabicTimelineEventSummary,
   describeAnnouncementTypeDe,
 } from "@/lib/cockpit/case-summary-ar";
@@ -38,30 +39,80 @@ function relevanceVariant(
  */
 export function BekanntmachungTimeline({
   events,
-  fallbackPhase,
-  fallbackPreVerteilung,
+  companyName,
+  latestPhase,
+  latestAnnouncementType,
+  latestPublicationDate,
+  preVerteilung,
+  hasAdministrator,
   hasAdministratorEmail,
   court,
   aktenzeichen,
 }: {
   events: CaseTimelineEvent[];
-  fallbackPhase: string | null;
-  fallbackPreVerteilung: boolean | null;
+  companyName: string | null;
+  latestPhase: string | null;
+  latestAnnouncementType: string | null;
+  latestPublicationDate: string | null;
+  preVerteilung: boolean | null;
+  hasAdministrator: boolean;
   hasAdministratorEmail: boolean;
   court: string | null;
   aktenzeichen: string | null;
 }) {
-  const summary = useMemo(
+  // Prefer the latest timeline event for the case facts; fall back to the
+  // card's own latest fields when the timeline view has no rows yet.
+  const latest = useMemo(
+    () =>
+      [...events].sort((a, b) => {
+        const ta = a.publicationDate ? Date.parse(a.publicationDate) : 0;
+        const tb = b.publicationDate ? Date.parse(b.publicationDate) : 0;
+        return tb - ta;
+      })[0] ?? null,
+    [events],
+  );
+
+  // Insolvency CASE summary (NOT company activity), 2–4 deterministic sentences.
+  const caseSummaryAr = useMemo(
+    () =>
+      buildArabicInsolvencyCaseSummary({
+        companyName,
+        latestPhase: latest?.insolvencyPhase ?? latestPhase,
+        latestAnnouncementType: latest?.announcementType ?? latestAnnouncementType,
+        latestPublicationDate: latest?.publicationDate ?? latestPublicationDate,
+        court: latest?.court ?? court,
+        aktenzeichen: latest?.aktenzeichen ?? aktenzeichen,
+        preVerteilung: latest?.isPreVerteilung ?? preVerteilung,
+        hasAdministrator,
+        eventCount: events.length,
+      }),
+    [
+      events,
+      latest,
+      companyName,
+      latestPhase,
+      latestAnnouncementType,
+      latestPublicationDate,
+      court,
+      aktenzeichen,
+      preVerteilung,
+      hasAdministrator,
+    ],
+  );
+
+  // Risk flags only (the rest of the old structured summary is folded into the
+  // case paragraph above).
+  const riskFlagsAr = useMemo(
     () =>
       buildArabicCaseSummary({
         events,
-        fallbackPhase,
-        fallbackPreVerteilung,
+        fallbackPhase: latestPhase,
+        fallbackPreVerteilung: preVerteilung,
         hasAdministratorEmail,
         court,
         aktenzeichen,
-      }),
-    [events, fallbackPhase, fallbackPreVerteilung, hasAdministratorEmail, court, aktenzeichen],
+      }).riskFlagsAr,
+    [events, latestPhase, preVerteilung, hasAdministratorEmail, court, aktenzeichen],
   );
 
   // Newest first for display.
@@ -77,24 +128,15 @@ export function BekanntmachungTimeline({
 
   return (
     <section className="space-y-3">
-      {/* Arabic case summary */}
+      {/* Insolvency CASE summary (distinct from company activity) */}
       <div className="space-y-1.5 rounded-md bg-muted/40 p-3">
-        <p className="eyebrow">KI-freie Fallzusammenfassung (AR)</p>
-        <p dir="rtl" className="text-sm font-medium leading-relaxed text-foreground">
-          {summary.headlineAr}
-        </p>
-        <p dir="rtl" className="text-[13px] leading-relaxed text-muted-foreground">
-          {summary.statusAr}
-        </p>
-        <p dir="rtl" className="text-[13px] leading-relaxed text-muted-foreground">
-          {summary.relevanceAr}
-        </p>
+        <p className="eyebrow">Fallzusammenfassung (AR)</p>
         <p dir="rtl" className="text-[13px] leading-relaxed text-foreground">
-          الإجراء المقترح: {summary.nextActionAr}
+          {caseSummaryAr}
         </p>
-        {summary.riskFlagsAr.length > 0 ? (
+        {riskFlagsAr.length > 0 ? (
           <ul dir="rtl" className="mt-1 space-y-0.5">
-            {summary.riskFlagsAr.map((f) => (
+            {riskFlagsAr.map((f) => (
               <li key={f} className="text-[11px] text-status-red">
                 • {f}
               </li>
