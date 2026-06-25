@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { searchCompanyCandidates } from "@/lib/cockpit/watchlist.queries";
 import {
+  searchNachlassCandidates,
+  type NachlassCandidate,
+} from "@/lib/cockpit/nachlass-search.queries";
+import {
   isWatchStatus,
   type CompanyCandidate,
   type WatchKind,
@@ -12,6 +16,9 @@ import {
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type SearchResult =
   | { ok: true; rows: CompanyCandidate[] }
+  | { ok: false; error: string };
+export type NachlassSearchActionResult =
+  | { ok: true; available: boolean; rows: NachlassCandidate[] }
   | { ok: false; error: string };
 
 const PATH = "/cockpit/watchlist";
@@ -166,6 +173,18 @@ export async function searchCompaniesAction(
   const { rows, error } = await searchCompanyCandidates(query);
   if (error) return { ok: false, error };
   return { ok: true, rows };
+}
+
+/**
+ * Search internal Nachlass candidates (read-only, internal-only). Queries the
+ * nachlass_authorized-gated view; never returns raw announcement text. Returns
+ * available:false when the backing view is not present yet (migration 0036).
+ */
+export async function searchNachlassAction(
+  query: string,
+): Promise<NachlassSearchActionResult> {
+  const { available, rows } = await searchNachlassCandidates(query);
+  return { ok: true, available, rows };
 }
 
 /** Add a company to the user's watchlist via cockpit_watch_company. */
