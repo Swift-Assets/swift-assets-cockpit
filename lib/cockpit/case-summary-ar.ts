@@ -79,9 +79,9 @@ export function describeAcquisitionRelevanceAr(event: {
   const pre =
     event.isPreVerteilung ??
     (event.insolvencyPhase ? PRE_VERTEILUNG.has(event.insolvencyPhase) : false);
-  if (pre) return "أكويرلِفانت — ضمن نافذة ما قبل التوزيع.";
+  if (pre) return "akquiserelevant — ضمن نافذة مبكرة قبل der Verteilung.";
   if (event.insolvencyPhase && event.insolvencyPhase !== "unknown")
-    return "مرحلة متأخرة/إجرائية — للمراقبة فقط.";
+    return "monitor — مرحلة متأخرة/إجرائية، للمتابعة فقط.";
   return "غير مصنّف — يتطلب مراجعة يدوية.";
 }
 
@@ -141,7 +141,7 @@ export function buildArabicCaseSummary(
   if (!input.court && !input.aktenzeichen)
     riskFlagsAr.push("لا يوجد مرجع قضية (محكمة/رقم ملف).");
   if (input.hasAdministratorEmail === false)
-    riskFlagsAr.push("لا يوجد بريد لمدير الإعسار — تواصل محدود.");
+    riskFlagsAr.push("لا يوجد E-Mail منظم للـ Insolvenzverwalter — تواصل محدود.");
 
   if (!latest && (phase === null || phase === undefined)) {
     return {
@@ -162,8 +162,8 @@ export function buildArabicCaseSummary(
 
   if (pre === true) {
     statusAr = `الطور الحالي: ${phaseDe} — ${phaseAr}.`;
-    relevanceAr = "أكويرلِفانت — الحالة ما تزال ضمن نافذة ما قبل التوزيع وقد تكون مهمة عمليًا.";
-    nextActionAr = "يُنصح بالمراجعة والتواصل مع مدير الإعسار لتقييم الأصول.";
+    relevanceAr = "التقييم: akquiserelevant — الحالة ما تزال ضمن نافذة مبكرة قبل der Verteilung وقد تكون مهمة عمليًا.";
+    nextActionAr = "يُنصح بالمراجعة والتواصل مع الـ Insolvenzverwalter لتقييم الأصول.";
   } else if (phase === "unknown" || phase === null) {
     statusAr = "الطور غير مصنّف بدقة من البيانات المتاحة.";
     relevanceAr = "التصنيف غير واضح — لا يُفترض تلقائيًا.";
@@ -171,15 +171,15 @@ export function buildArabicCaseSummary(
   } else {
     statusAr = `الطور الحالي: ${phaseDe} — ${phaseAr}.`;
     relevanceAr = hasEarlyEvent
-      ? "مرحلة متأخرة الآن، لكن يوجد حدث مبكر سابق في السجل قد يستحق المراجعة."
-      : "مرحلة متأخرة/إجرائية — للمراقبة فقط، قيمة استحواذ محدودة عادةً.";
+      ? "monitor الآن، لكن يوجد حدث مبكر سابق في الـ Timeline قد يستحق المراجعة."
+      : "monitor — مرحلة متأخرة/إجرائية، قيمة استحواذ محدودة عادةً.";
     nextActionAr = hasEarlyEvent
       ? "راجع السجل الزمني؛ التواصل اختياري حسب الأصول المتبقية."
       : "إبقاء الحالة تحت المراقبة دون إجراء فوري.";
   }
 
   const headlineAr = latest
-    ? `آخر بكنتماخونغ: ${phaseDe}.`
+    ? `آخر Bekanntmachung: ${phaseDe}.`
     : `التصنيف الحالي: ${phaseDe}.`;
 
   return { headlineAr, statusAr, relevanceAr, nextActionAr, riskFlagsAr };

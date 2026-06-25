@@ -15,6 +15,7 @@ import {
 import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-drafts/actions";
 import { BekanntmachungTimeline } from "@/components/cockpit/bekanntmachung-timeline";
 import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
+import { chooseBestAdministratorContact } from "@/lib/cockpit/administrator-contact";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -100,6 +101,17 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
     caseLabel: data.title,
     aktenzeichen: data.aktenzeichen,
     latestPublicationDate: data.latestPublicationDate,
+  });
+  // Best available Insolvenzverwalter contact: current row first, then filled
+  // from the timeline events (structured fields only, never raw text).
+  const adminContact = chooseBestAdministratorContact({
+    inbox: {
+      name: data.administratorName,
+      email: data.administratorEmail,
+      phone: data.administratorPhone,
+      address: data.administratorAddress,
+    },
+    timeline: data.timeline,
   });
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
@@ -249,15 +261,26 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
             />
           ) : null}
 
-          {/* Insolvenzverwalter (Kanzlei/Firm not yet exposed by the safe view — TODO) */}
+          {/* Insolvenzverwalter — best available contact (inbox row first, then
+              filled from the Bekanntmachung timeline). Kanzlei/Firm not yet
+              exposed by the safe view — TODO. */}
           <section className="space-y-1.5">
             <p className="eyebrow">Insolvenzverwalter</p>
             <dl className="space-y-1.5 text-xs">
-              <Row label="Name" value={data.administratorName} />
-              <ContactRow label="E-Mail" value={data.administratorEmail} kind="email" />
-              <ContactRow label="Telefon" value={data.administratorPhone} kind="phone" />
-              <Row label="Adresse" value={data.administratorAddress} />
+              <Row label="Name" value={adminContact.name} />
+              <ContactRow label="E-Mail" value={adminContact.email} kind="email" />
+              <ContactRow label="Telefon" value={adminContact.phone} kind="phone" />
+              <Row label="Adresse" value={adminContact.address} />
             </dl>
+            {adminContact.source === "timeline" ? (
+              <p className="text-[11px] text-muted-foreground">
+                Kontakt aus Bekanntmachung-Timeline übernommen.
+              </p>
+            ) : adminContact.source === "none" ? (
+              <p className="text-[11px] text-muted-foreground">
+                Keine strukturierten Kontaktdaten zum Insolvenzverwalter gefunden.
+              </p>
+            ) : null}
           </section>
 
           {/* Datenqualität (Bundesanzeiger intentionally hidden — retired) */}

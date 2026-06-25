@@ -108,7 +108,7 @@ export function BekanntmachungTimeline({
         <p className="eyebrow">Bekanntmachungen (Timeline)</p>
         {ordered.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">
-            لا توجد بيانات timeline كافية بعد لهذه الحالة.
+            لا توجد بيانات Timeline كافية بعد لهذه الحالة.
           </p>
         ) : (
           <ol className="space-y-2">
