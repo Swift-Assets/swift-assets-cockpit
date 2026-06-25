@@ -15,6 +15,7 @@ import {
   companyActivityByEntityId,
   getCompanyActivitySummariesForEntities,
 } from "@/lib/cockpit/company-activity.queries";
+import { getCaseTimelineByEntityId } from "@/lib/cockpit/case-timeline.queries";
 import { GATES, sanitizeGate } from "@/lib/cockpit/acquisition-relevance";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,11 @@ export default async function AcquisitionGatePage({
         .map((r) => r.entity_id as string)
     : [];
 
-  const activity = await getCompanyActivitySummariesForEntities(companyEntityIds);
+  // Scope activity + timeline to the loaded company entities only (batched).
+  const [activity, timelineByEntityId] = await Promise.all([
+    getCompanyActivitySummariesForEntities(companyEntityIds),
+    getCaseTimelineByEntityId(companyEntityIds),
+  ]);
 
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
   const activityByEntityId = companyActivityByEntityId(activity.rows);
@@ -82,6 +87,7 @@ export default async function AcquisitionGatePage({
           rows={inbox.rows}
           draftKeys={draftKeys}
           activityByEntityId={activityByEntityId}
+          timelineByEntityId={timelineByEntityId}
           gate={gate}
           gateCounts={gateCounts}
           loadedCount={inbox.loadedCount}

@@ -13,6 +13,8 @@ import {
   watchNachlassAction,
 } from "@/app/cockpit/watchlist/actions";
 import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-drafts/actions";
+import { BekanntmachungTimeline } from "@/components/cockpit/bekanntmachung-timeline";
+import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -47,6 +49,8 @@ export interface CaseCardData {
   status: CaseStatus;
   /** Company business-activity description (Arabic) — shown on the card exterior. */
   companyActivityAr: string | null;
+  /** Bekanntmachung timeline events (company only; empty until view 0038 applied). */
+  timeline: CaseTimelineEvent[];
   hasDraft: boolean;
 }
 
@@ -231,6 +235,19 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               Detaillierte Bekanntmachungs-Timeline: noch nicht verfügbar (Backend).
             </p>
           </section>
+
+          {/* Bekanntmachung timeline + deterministic Arabic case summary
+              (company only; safe structured fields, never raw text). */}
+          {data.kind === "company" ? (
+            <BekanntmachungTimeline
+              events={data.timeline}
+              fallbackPhase={data.latestPhase}
+              fallbackPreVerteilung={data.preVerteilung}
+              hasAdministratorEmail={Boolean(data.administratorEmail)}
+              court={data.court}
+              aktenzeichen={data.aktenzeichen}
+            />
+          ) : null}
 
           {/* Insolvenzverwalter (Kanzlei/Firm not yet exposed by the safe view — TODO) */}
           <section className="space-y-1.5">

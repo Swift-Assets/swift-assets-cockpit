@@ -9,6 +9,7 @@ import {
 } from "@/components/cockpit/acquisition-case-card";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import type { AcquisitionInboxRow } from "@/lib/cockpit/acquisition-inbox.queries";
+import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
 import { GATES, type Gate } from "@/lib/cockpit/acquisition-relevance";
 
 // Keep in sync with sanitizeInboxLimit() in acquisition-inbox.queries.ts.
@@ -27,11 +28,14 @@ function rowToCard(
   r: AcquisitionInboxRow,
   draftKeySet: Set<string>,
   activityByEntityId: Record<string, string>,
+  timelineByEntityId: Record<string, CaseTimelineEvent[]>,
 ): CaseCardData {
   const isNachlass = r.kind === "nachlass";
   const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
   const companyActivityAr =
     !isNachlass && r.entity_id ? (activityByEntityId[r.entity_id] ?? null) : null;
+  const timeline =
+    !isNachlass && r.entity_id ? (timelineByEntityId[r.entity_id] ?? []) : [];
   return {
     key: r.case_key,
     kind: isNachlass ? "nachlass" : "company",
@@ -63,6 +67,7 @@ function rowToCard(
     sourceQualityFlags: r.source_quality_flags ?? [],
     status: inboxStatusToCard(r.inbox_status),
     companyActivityAr,
+    timeline,
     hasDraft: r.watch_id ? draftKeySet.has(watchKey) : false,
   };
 }
@@ -100,6 +105,7 @@ export function AcquisitionInbox({
   rows,
   draftKeys,
   activityByEntityId,
+  timelineByEntityId,
   gate,
   gateCounts,
   loadedCount,
@@ -109,6 +115,7 @@ export function AcquisitionInbox({
   rows: AcquisitionInboxRow[];
   draftKeys: string[];
   activityByEntityId: Record<string, string>;
+  timelineByEntityId: Record<string, CaseTimelineEvent[]>;
   gate: Gate;
   gateCounts: Record<string, number | null>;
   loadedCount: number;
@@ -119,8 +126,10 @@ export function AcquisitionInbox({
   // paginates the render window.
   const cards = useMemo(() => {
     const draftKeySet = new Set(draftKeys);
-    return rows.map((r) => rowToCard(r, draftKeySet, activityByEntityId));
-  }, [rows, draftKeys, activityByEntityId]);
+    return rows.map((r) =>
+      rowToCard(r, draftKeySet, activityByEntityId, timelineByEntityId),
+    );
+  }, [rows, draftKeys, activityByEntityId, timelineByEntityId]);
 
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   useEffect(() => {
