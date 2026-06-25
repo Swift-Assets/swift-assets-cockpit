@@ -9,28 +9,12 @@ import {
 } from "@/components/cockpit/acquisition-case-card";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import type { AcquisitionInboxRow } from "@/lib/cockpit/acquisition-inbox.queries";
-
-type SegKey = "neu" | "watching" | "pursuing" | "passed" | "nachlass" | "all";
-type TypeKey = "all" | "company" | "nachlass";
+import { GATES, type Gate } from "@/lib/cockpit/acquisition-relevance";
 
 // Keep in sync with sanitizeInboxLimit() in acquisition-inbox.queries.ts.
 const MAX_SERVER_LIMIT = 1000;
 const SERVER_STEP = 240;
-
-const TYPE_FILTERS: { key: TypeKey; label: string }[] = [
-  { key: "all", label: "Alle Typen" },
-  { key: "company", label: "Firma" },
-  { key: "nachlass", label: "Nachlass" },
-];
-
-const SEGMENTS: { key: SegKey; label: string }[] = [
-  { key: "neu", label: "Neue Fälle" },
-  { key: "watching", label: "In Beobachtung" },
-  { key: "pursuing", label: "Kontakt aufnehmen" },
-  { key: "passed", label: "Ignoriert" },
-  { key: "nachlass", label: "Nachlass" },
-  { key: "all", label: "Alle" },
-];
+const PAGE_SIZE = 24;
 
 function inboxStatusToCard(s: AcquisitionInboxRow["inbox_status"]): CaseCardData["status"] {
   if (s === "neu") return "neu";
@@ -82,10 +66,41 @@ function rowToCard(
   };
 }
 
+const EMPTY_BY_GATE: Record<Gate, { title: string; description: string }> = {
+  acquisition: {
+    title: "Keine akquiserelevanten Fälle",
+    description:
+      "Aktuell keine neuen Firmenfälle im akquiserelevanten Fenster (vor der Verteilung). Spätphasen-Fälle finden Sie unter „Monitor“.",
+  },
+  watchlist: {
+    title: "Keine beobachteten Fälle",
+    description: "Übernehmen Sie Fälle mit „تابع“, um sie hier zu sammeln.",
+  },
+  ignored: {
+    title: "Keine ignorierten Fälle",
+    description: "Mit „اهمل“ ignorierte Fälle erscheinen hier.",
+  },
+  monitor: {
+    title: "Keine Monitor-Fälle",
+    description:
+      "Spätphasen / geringwertige, rein verfahrensbezogene Fälle erscheinen hier.",
+  },
+  nachlass: {
+    title: "Keine Nachlassfälle",
+    description: "Nachlass-/Erbfälle erscheinen hier.",
+  },
+  all: {
+    title: "Keine Fälle",
+    description: "Aktuell sind keine Fälle geladen.",
+  },
+};
+
 export function AcquisitionInbox({
   rows,
   draftKeys,
   activityByEntityId,
+  gate,
+  gateCounts,
   loadedCount,
   totalCount,
   serverLimit,
@@ -93,118 +108,60 @@ export function AcquisitionInbox({
   rows: AcquisitionInboxRow[];
   draftKeys: string[];
   activityByEntityId: Record<string, string>;
+  gate: Gate;
+  gateCounts: Record<string, number | null>;
   loadedCount: number;
   totalCount: number | null;
   serverLimit: number;
 }) {
-  const [segment, setSegment] = useState<SegKey>("neu");
-  const [typeFilter, setTypeFilter] = useState<TypeKey>("all");
-
-  const { cards, counts } = useMemo(() => {
+  // Rows are already filtered SERVER-SIDE to the active gate; the client only
+  // paginates the render window.
+  const cards = useMemo(() => {
     const draftKeySet = new Set(draftKeys);
-    // Global Firma/Nachlass filter — applied BEFORE segment counts so tabs and
-    // the visible grid stay consistent with the active type.
-    const all = rows
-      .map((r) => rowToCard(r, draftKeySet, activityByEntityId))
-      .filter((c) => typeFilter === "all" || c.kind === typeFilter);
-    const counts: Record<SegKey, number> = {
-      neu: all.filter((c) => c.status === "neu").length,
-      watching: all.filter((c) => c.source === "watch" && c.status === "watching").length,
-      pursuing: all.filter((c) => c.status === "pursuing").length,
-      passed: all.filter((c) => c.status === "passed").length,
-      nachlass: all.filter((c) => c.kind === "nachlass").length,
-      all: all.length,
-    };
-    return { cards: all, counts };
-  }, [rows, draftKeys, activityByEntityId, typeFilter]);
+    return rows.map((r) => rowToCard(r, draftKeySet, activityByEntityId));
+  }, [rows, draftKeys, activityByEntityId]);
 
-  const visible = useMemo(() => {
-    switch (segment) {
-      case "neu":
-        return cards.filter((c) => c.status === "neu");
-      case "watching":
-        return cards.filter((c) => c.source === "watch" && c.status === "watching");
-      case "pursuing":
-        return cards.filter((c) => c.status === "pursuing");
-      case "passed":
-        return cards.filter((c) => c.status === "passed");
-      case "nachlass":
-        return cards.filter((c) => c.kind === "nachlass");
-      case "all":
-      default:
-        return cards;
-    }
-  }, [cards, segment]);
-
-  // Render only a slice of the (potentially thousands of) matching cards, with a
-  // "Mehr laden" button. Reset the window whenever the filters change so the user
-  // always starts at the top of the new list.
-  const PAGE_SIZE = 24;
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   useEffect(() => {
     setVisibleLimit(PAGE_SIZE);
-  }, [segment, typeFilter]);
+  }, [gate]);
 
   const visibleLimited = useMemo(
-    () => visible.slice(0, visibleLimit),
-    [visible, visibleLimit],
+    () => cards.slice(0, visibleLimit),
+    [cards, visibleLimit],
   );
+
+  const empty = EMPTY_BY_GATE[gate];
 
   return (
     <div className="space-y-5">
-      {/* Global type filter (Firma / Nachlass) — applies to the whole list */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="eyebrow">Typ</span>
-        <div className="flex gap-1 border border-border bg-card p-1">
-          {TYPE_FILTERS.map((t) => {
-            const active = typeFilter === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTypeFilter(t.key)}
-                className={cn(
-                  "px-3 py-1.5 text-[13px] font-medium tracking-wide transition-colors",
-                  active ? "bg-ink text-paper" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Workflow segments (status) — counts reflect the active type filter */}
+      {/* Acquisition Gate tabs — server-driven (each is a ?gate= link). */}
       <div className="cockpit-scroll flex gap-1 overflow-x-auto border border-border bg-card p-1">
-        {SEGMENTS.map((s) => {
-          const active = segment === s.key;
+        {GATES.map((g) => {
+          const active = gate === g.key;
+          const count = gateCounts[g.key];
           return (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setSegment(s.key)}
+            <Link
+              key={g.key}
+              href={`/cockpit/watchlist?gate=${g.key}`}
+              title={g.description}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex shrink-0 items-center gap-2 px-4 py-2 text-[13px] font-medium tracking-wide transition-colors",
                 active ? "bg-ink text-paper" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {s.label}
-              <span className="text-[0.7rem] tabular-nums opacity-70">{counts[s.key]}</span>
-            </button>
+              {g.label}
+              {typeof count === "number" ? (
+                <span className="text-[0.7rem] tabular-nums opacity-70">{count}</span>
+              ) : null}
+            </Link>
           );
         })}
       </div>
 
-      {visible.length === 0 ? (
-        <EmptyState
-          title="Keine Fälle in dieser Kategorie"
-          description={
-            segment === "neu"
-              ? "Aktuell keine neuen Insolvenzfälle im Akquise-Fenster. Neue Bekanntmachungen erscheinen hier automatisch."
-              : "Wechseln Sie die Kategorie oder fügen Sie über die Suche oben einen Fall hinzu."
-          }
-        />
+      {cards.length === 0 ? (
+        <EmptyState title={empty.title} description={empty.description} />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -215,9 +172,9 @@ export function AcquisitionInbox({
 
           <div className="flex flex-col items-center gap-2 pt-1">
             <p className="text-xs tabular-nums text-muted-foreground">
-              Zeige {visibleLimited.length} von {visible.length} Fällen
+              Zeige {visibleLimited.length} von {cards.length} geladenen Fällen
             </p>
-            {visible.length > visibleLimit ? (
+            {cards.length > visibleLimit ? (
               <button
                 type="button"
                 onClick={() => setVisibleLimit((n) => n + PAGE_SIZE)}
@@ -227,7 +184,6 @@ export function AcquisitionInbox({
               </button>
             ) : null}
 
-            {/* Server-side cap status + optional larger server fetch */}
             {totalCount !== null ? (
               <p className="text-[11px] tabular-nums text-muted-foreground">
                 Serverseitig geladen: {loadedCount.toLocaleString("de-DE")} von{" "}
@@ -238,7 +194,7 @@ export function AcquisitionInbox({
             totalCount > loadedCount &&
             serverLimit < MAX_SERVER_LIMIT ? (
               <Link
-                href={`/cockpit/watchlist?limit=${Math.min(
+                href={`/cockpit/watchlist?gate=${gate}&limit=${Math.min(
                   serverLimit + SERVER_STEP,
                   MAX_SERVER_LIMIT,
                 )}`}

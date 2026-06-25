@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/cockpit/page-header";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { AcquisitionInbox } from "@/components/cockpit/acquisition-inbox";
 import {
+  getAcquisitionGateCounts,
   getAcquisitionInbox,
   sanitizeInboxLimit,
 } from "@/lib/cockpit/acquisition-inbox.queries";
@@ -14,31 +15,34 @@ import {
   companyActivityByEntityId,
   getCompanyActivitySummariesForEntities,
 } from "@/lib/cockpit/company-activity.queries";
+import { GATES, sanitizeGate } from "@/lib/cockpit/acquisition-relevance";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Acquisition Inbox — card-first workflow on the unified backend view
- * swift_v2.v_cockpit_acquisition_inbox (getAcquisitionInbox): new company + new
- * Nachlass + watched company/Nachlass cases in one safe source. The inbox is
- * capped SERVER-SIDE (default 240, max 1000 via ?limit=) so the page never loads
- * the full ~21k result. Company activity summaries are loaded only for the
- * loaded entity IDs. All actions use existing SECURITY DEFINER RPCs; no email is
- * sent. Privacy: safe internal fields only — Nachlass person_name is
- * internal-only; no raw text/raw_json/source_snapshot.
+ * Acquisition Gate (Phase 0043) — acquisition-relevance triage over the unified
+ * view swift_v2.v_cockpit_acquisition_inbox. The active gate (?gate=, default
+ * "acquisition") is filtered SERVER-SIDE so the default view shows only NEW,
+ * pre-Verteilung-relevant company cases — low-value/late-stage noise lives in the
+ * "monitor"/"all" gates and nothing is deleted. Server-capped (?limit=, default
+ * 240, max 1000). Company activity summaries are scoped to the loaded rows. All
+ * actions use existing SECURITY DEFINER RPCs; no email sent. Privacy: safe
+ * internal fields only — Nachlass person_name is internal-only; no raw
+ * text/raw_json/source_snapshot.
  */
-export default async function WatchlistPage({
+export default async function AcquisitionGatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ limit?: string }>;
+  searchParams: Promise<{ limit?: string; gate?: string }>;
 }) {
-  const { limit: limitParam } = await searchParams;
+  const { limit: limitParam, gate: gateParam } = await searchParams;
   const limit = sanitizeInboxLimit(limitParam);
+  const gate = sanitizeGate(gateParam);
 
-  // Inbox first (server-capped); company activity is scoped to the loaded rows.
-  const [inbox, drafts] = await Promise.all([
-    getAcquisitionInbox({ limit }),
+  const [inbox, drafts, gateCounts] = await Promise.all([
+    getAcquisitionInbox({ limit, gate }),
     getOutreachDrafts(),
+    getAcquisitionGateCounts(GATES.map((g) => g.key)),
   ]);
 
   const companyEntityIds = inbox.available
@@ -61,28 +65,25 @@ export default async function WatchlistPage({
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Acquisition Inbox"
-        title="Neue Insolvenzfälle"
-        lead="Neue Insolvenzfälle, Beobachtung, Kontaktaufnahme und ignorierte Fälle — als Karten. Firmen- und Nachlassinsolvenzen für die interne Akquise."
+        eyebrow="Acquisition Gate"
+        title="Acquisition Gate"
+        lead="Akquiserelevante Insolvenzfälle, Watchlist und ignorierte Fälle für die interne Akquise. Standard: neue, akquiserelevante Firmenfälle vor der Verteilung."
       />
 
       <WatchlistAddPanel watchedCompanyIds={watchedCompanyIds} />
 
       {!inbox.available ? (
         <EmptyState
-          title="Acquisition Inbox View nicht verfügbar."
+          title="Acquisition Gate View nicht verfügbar."
           description="Die unified Inbox-View (v_cockpit_acquisition_inbox) ist derzeit nicht erreichbar. Bitte später erneut versuchen oder die Anwendung neu laden."
-        />
-      ) : inbox.rows.length === 0 ? (
-        <EmptyState
-          title="Noch keine Akquise-Fälle"
-          description="Aktuell sind keine Insolvenzfälle im Akquise-Fenster erfasst und Ihre Watchlist ist leer. Neue Fälle erscheinen hier automatisch; Unternehmen können Sie über die Suche oben hinzufügen."
         />
       ) : (
         <AcquisitionInbox
           rows={inbox.rows}
           draftKeys={draftKeys}
           activityByEntityId={activityByEntityId}
+          gate={gate}
+          gateCounts={gateCounts}
           loadedCount={inbox.loadedCount}
           totalCount={inbox.totalCount}
           serverLimit={inbox.limit}

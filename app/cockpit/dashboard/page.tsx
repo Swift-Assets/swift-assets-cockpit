@@ -127,7 +127,7 @@ export default async function DashboardPage() {
             href="/cockpit/watchlist"
             className="text-xs text-muted-foreground underline underline-offset-2"
           >
-            Watchlist öffnen
+            Acquisition Gate öffnen
           </Link>
         }
       >

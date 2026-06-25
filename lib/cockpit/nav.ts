@@ -32,10 +32,10 @@ export const COCKPIT_NAV: CockpitNavItem[] = [
     description: "Executive overview and KPIs",
   },
   {
-    label: "Watchlist",
+    label: "Acquisition Gate",
     href: "/cockpit/watchlist",
     icon: Star,
-    description: "Acquisition watchlist (companies & Nachlass)",
+    description: "Acquisition triage gate (relevance, watchlist, ignored, monitor)",
   },
   {
     label: "Aufgaben",
