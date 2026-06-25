@@ -1,18 +1,9 @@
-import { Star } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
-import { WatchlistFilteredTable } from "@/components/cockpit/watchlist-filtered-table";
-import { WatchlistPipeline } from "@/components/cockpit/watchlist-pipeline";
-import { getMyWatchlist } from "@/lib/cockpit/watchlist.queries";
+import { AcquisitionInbox } from "@/components/cockpit/acquisition-inbox";
 import { getInternalWatchlist } from "@/lib/cockpit/watchlist-internal.queries";
+import { getAcquisitionLeads } from "@/lib/cockpit/acquisition.queries";
 import { getMyTasks } from "@/lib/cockpit/tasks.queries";
 import { openTaskContextKeys } from "@/lib/cockpit/tasks";
 import {
@@ -27,86 +18,63 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Unified acquisition watchlist (CORE PHASE 3).
+ * Acquisition Inbox (Phase 0035A) — card-first acquisition workflow.
  *
- * Primary table is driven by swift_v2.v_cockpit_watchlist_internal (enriched
- * acquisition data + inline status/note/follow-up editing + follow-up task +
- * outreach draft + remove + expandable detail). Falls back to the basic
- * v_cockpit_my_watchlist table if the internal view is unavailable. All writes
- * go through existing SECURITY DEFINER RPCs; no direct table DML. Privacy: only
- * non-sensitive columns; Nachlass uses safe labels only.
+ * "Neue Fälle" are real, in-window company insolvency leads from
+ * v_cockpit_company_announcements (getAcquisitionLeads) not yet watched.
+ * Watched cases (company + Nachlass) come from v_cockpit_watchlist_internal.
+ * Arabic AI summaries come from v_cockpit_ai_case_reviews where present;
+ * otherwise a tasteful placeholder is shown (never fabricated). All actions use
+ * existing SECURITY DEFINER RPCs; no email is sent. A tabular view is kept as a
+ * collapsible fallback. Privacy: safe columns only — no raw text/raw_json/
+ * source_snapshot; Nachlass uses safe labels from the approved internal view.
  */
 export default async function WatchlistPage() {
-  const [basic, tasksResult, internal, drafts, aiReviews] = await Promise.all([
-    getMyWatchlist(),
-    getMyTasks(),
-    getInternalWatchlist(),
-    getOutreachDrafts(),
-    getAiCaseReviews(),
-  ]);
+  const [internal, leadsResult, tasksResult, drafts, aiReviews] =
+    await Promise.all([
+      getInternalWatchlist(),
+      getAcquisitionLeads(60),
+      getMyTasks(),
+      getOutreachDrafts(),
+      getAiCaseReviews(),
+    ]);
+
+  const watchedRows = internal.available ? internal.rows : [];
+  const leads = leadsResult.available ? leadsResult.rows : [];
   const openTaskKeys = openTaskContextKeys(tasksResult.rows);
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
   const aiReviewByKey = activeAiReviewByWatchKey(aiReviews.rows);
 
-  // Company entity_ids already on the watchlist, to mark "Bereits in Watchlist".
-  const watchedCompanyIds = (
-    internal.available
-      ? internal.rows
-          .filter((r) => r.kind === "company" && r.subject_id)
-          .map((r) => r.subject_id as string)
-      : basic.rows
-          .filter((r) => r.kind === "company" && r.subject_id)
-          .map((r) => r.subject_id as string)
-  );
+  const watchedCompanyIds = watchedRows
+    .filter((r) => r.kind === "company" && r.subject_id)
+    .map((r) => r.subject_id as string);
+
+  const nothing = watchedRows.length === 0 && leads.length === 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        eyebrow="Akquise-Pipeline"
-        title="Watchlist"
-        lead="Interne Akquise-Watchlist (Firmen & Nachlass) — angereicherte Daten, Bearbeitung, Follow-ups und Anfrage-Entwürfe an einem Ort."
+        eyebrow="Acquisition Inbox"
+        title="Neue Insolvenzfälle"
+        lead="Neue Insolvenzfälle, Beobachtung, Kontaktaufnahme und ignorierte Fälle — als Karten. Firmen- und Nachlassinsolvenzen für die interne Akquise."
       />
 
       <WatchlistAddPanel watchedCompanyIds={watchedCompanyIds} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Akquise-Pipeline</CardTitle>
-          <CardDescription>
-            {internal.available
-              ? "Stufen: Neue Fälle · In Beobachtung · Follow-up fällig · Kontakt aufnehmen · Ignoriert. Quelle: v_cockpit_watchlist_internal; Änderungen über gesicherte RPCs."
-              : "Interne Erweiterung nicht verfügbar — Basis-Watchlist (v_cockpit_my_watchlist)."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {internal.available ? (
-            internal.rows.length === 0 ? (
-              <EmptyState
-                icon={<Star className="h-5 w-5" />}
-                title="Noch keine Akquise-Fälle auf der Watchlist"
-                description="Fügen Sie ein Unternehmen hinzu, um Bewertungen, Aufgaben und Entwürfe zu verwalten. Nutzen Sie die Suche oben („Unternehmen suchen“)."
-              />
-            ) : (
-              <WatchlistPipeline
-                rows={internal.rows}
-                openTaskKeys={openTaskKeys}
-                activeDraftKeys={draftKeys}
-                aiReviewByKey={aiReviewByKey}
-              />
-            )
-          ) : basic.error ? (
-            <p className="text-sm text-status-yellow">{basic.error}</p>
-          ) : basic.rows.length === 0 ? (
-            <EmptyState
-              icon={<Star className="h-5 w-5" />}
-              title="Noch keine Akquise-Fälle auf der Watchlist"
-              description="Fügen Sie ein Unternehmen hinzu, um Bewertungen, Aufgaben und Entwürfe zu verwalten. Nutzen Sie die Suche oben („Unternehmen suchen“)."
-            />
-          ) : (
-            <WatchlistFilteredTable rows={basic.rows} openTaskKeys={openTaskKeys} />
-          )}
-        </CardContent>
-      </Card>
+      {nothing ? (
+        <EmptyState
+          title="Noch keine Akquise-Fälle"
+          description="Aktuell sind keine neuen Insolvenzfälle im Akquise-Fenster erfasst und Ihre Watchlist ist leer. Neue Fälle erscheinen hier automatisch; Unternehmen können Sie über die Suche oben hinzufügen."
+        />
+      ) : (
+        <AcquisitionInbox
+          watchedRows={watchedRows}
+          leads={leads}
+          aiReviewByKey={aiReviewByKey}
+          draftKeys={draftKeys}
+          openTaskKeys={openTaskKeys}
+        />
+      )}
     </div>
   );
 }
