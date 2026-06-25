@@ -13,6 +13,7 @@ import {
   watchNachlassAction,
 } from "@/app/cockpit/watchlist/actions";
 import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-drafts/actions";
+import { generateAiCaseReviewAction } from "@/app/cockpit/ai-reviews/actions";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -45,6 +46,12 @@ export interface CaseCardData {
   sourceQualityFlags: string[];
   status: CaseStatus;
   summaryAr: string | null;
+  aiScore: number | null;
+  aiPriority: string | null;
+  aiReasoningAr: string | null;
+  aiRiskFlags: string[];
+  aiNextAction: string | null;
+  hasReview: boolean;
   hasDraft: boolean;
 }
 
@@ -62,6 +69,24 @@ function priorityVariant(p: string | null): "red" | "yellow" | "muted" {
   if (p === "high") return "red";
   if (p === "low") return "yellow";
   return "muted";
+}
+
+/** AI review priority (low|medium|high|urgent) → badge variant + German label. */
+function aiPriorityMeta(
+  p: string | null,
+): { label: string; variant: "red" | "yellow" | "green" | "muted" } {
+  switch (p) {
+    case "urgent":
+      return { label: "Dringend", variant: "red" };
+    case "high":
+      return { label: "Hoch", variant: "red" };
+    case "medium":
+      return { label: "Mittel", variant: "yellow" };
+    case "low":
+      return { label: "Niedrig", variant: "green" };
+    default:
+      return { label: "—", variant: "muted" };
+  }
 }
 
 function fmtDate(value: string | null): string {
@@ -137,6 +162,24 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
     );
   }
 
+  function generateAiReview() {
+    if (data.kind !== "company" || !data.watchId) return;
+    run(
+      () => generateAiCaseReviewAction("company", data.watchId as string),
+      "KI-Zusammenfassung erstellt.",
+    );
+  }
+
+  // AI generation is wired for watched company cases only (needs a watch_id).
+  const aiReview = data.kind === "company";
+  const aiDisabled = pending || !data.watchId;
+  const aiTitle = !data.watchId
+    ? "Zuerst übernehmen, um KI-Zusammenfassung zu erstellen."
+    : data.hasReview
+      ? "KI-Bewertung erneut erstellen (überschreibt die vorhandene)."
+      : "Erstellt eine interne KI-Bewertung (kein Versand, keine öffentliche Anzeige).";
+  const aiPriority = aiPriorityMeta(data.aiPriority);
+
   const emailDisabled = pending || !data.watchId;
   const emailTitle = !data.watchId
     ? "Zuerst übernehmen, um einen Entwurf zu erstellen."
@@ -190,12 +233,71 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
       {/* Inline expanded detail (replaces the old right-side drawer) */}
       {expanded ? (
         <div className="space-y-4 border-t border-border px-4 py-4">
-          {/* KI-Zusammenfassung (AR) */}
-          <section className="space-y-1.5">
-            <p className="eyebrow">KI-Zusammenfassung (AR)</p>
+          {/* KI-Zusammenfassung (AR) + Metadaten */}
+          <section className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="eyebrow">KI-Zusammenfassung (AR)</p>
+              {data.hasReview ? (
+                <div className="flex items-center gap-1.5">
+                  {typeof data.aiScore === "number" ? (
+                    <Badge variant="muted">Score {data.aiScore}</Badge>
+                  ) : null}
+                  {data.aiPriority ? (
+                    <Badge variant={aiPriority.variant}>{aiPriority.label}</Badge>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
             <p dir="rtl" className="text-sm leading-relaxed text-foreground">
               {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
             </p>
+
+            {data.aiReasoningAr?.trim() ? (
+              <div className="space-y-1">
+                <p className="eyebrow">KI-Begründung (AR)</p>
+                <p dir="rtl" className="text-[13px] leading-relaxed text-muted-foreground">
+                  {data.aiReasoningAr}
+                </p>
+              </div>
+            ) : null}
+
+            {data.aiRiskFlags.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {data.aiRiskFlags.map((f) => (
+                  <Badge key={f} variant="yellow">
+                    {f}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+
+            {data.aiNextAction?.trim() ? (
+              <p className="text-[11px] text-muted-foreground">
+                Nächster Schritt (KI): {data.aiNextAction}
+              </p>
+            ) : null}
+
+            {aiReview ? (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={aiDisabled}
+                  title={aiTitle}
+                  onClick={generateAiReview}
+                >
+                  {data.hasReview
+                    ? "KI-Zusammenfassung aktualisieren"
+                    : "KI-Zusammenfassung erstellen"}
+                </Button>
+                {!data.watchId ? (
+                  <span className="text-[11px] text-muted-foreground">
+                    Zuerst übernehmen, um eine KI-Bewertung zu erstellen.
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </section>
 
           {/* Fall */}

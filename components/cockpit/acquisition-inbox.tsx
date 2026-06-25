@@ -42,6 +42,7 @@ function rowToCard(
 ): CaseCardData {
   const isNachlass = r.kind === "nachlass";
   const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
+  const review = r.watch_id ? aiReviewByKey[watchKey] : undefined;
   return {
     key: r.case_key,
     kind: isNachlass ? "nachlass" : "company",
@@ -71,7 +72,13 @@ function rowToCard(
     missingDataFlags: r.missing_data_flags ?? [],
     sourceQualityFlags: r.source_quality_flags ?? [],
     status: inboxStatusToCard(r.inbox_status),
-    summaryAr: r.watch_id ? (aiReviewByKey[watchKey]?.summary_ar ?? null) : null,
+    summaryAr: review?.summary_ar ?? null,
+    aiScore: review?.acquisition_score ?? null,
+    aiPriority: review?.priority ?? null,
+    aiReasoningAr: review?.reasoning_ar ?? null,
+    aiRiskFlags: review?.risk_flags ?? [],
+    aiNextAction: review?.recommended_next_action ?? null,
+    hasReview: Boolean(review),
     hasDraft: r.watch_id ? draftKeySet.has(watchKey) : false,
   };
 }
