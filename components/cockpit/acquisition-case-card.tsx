@@ -227,24 +227,8 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
           with the insolvency case summary + timeline instead. */}
       {expanded ? (
         <div className="space-y-4 border-t border-border px-4 py-4">
-          {/* Fall */}
-          <section className="space-y-1.5">
-            <p className="eyebrow">Fall</p>
-            <dl className="space-y-1.5 text-xs">
-              <Row label="Phase" value={phaseLabel} />
-              <Row label="Typ-Hinweis" value={data.latestAnnouncementType} />
-              <Row label="Priorität" value={data.phasePriority} />
-              <Row label="Letzte Bekanntmachung" value={fmtDate(data.latestPublicationDate)} />
-              <Row label="Gericht" value={data.court} />
-              <Row label="Aktenzeichen" value={data.aktenzeichen} />
-            </dl>
-            <p className="text-[11px] text-muted-foreground">
-              Detaillierte Bekanntmachungs-Timeline: noch nicht verfügbar (Backend).
-            </p>
-          </section>
-
-          {/* Bekanntmachung timeline + deterministic Arabic case summary
-              (company only; safe structured fields, never raw text). */}
+          {/* Lead with the Arabic insolvency case summary + Bekanntmachung
+              timeline (company only; safe structured fields, never raw text). */}
           {data.kind === "company" ? (
             <BekanntmachungTimeline
               events={data.timeline}
@@ -259,6 +243,19 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               aktenzeichen={data.aktenzeichen}
             />
           ) : null}
+
+          {/* Fall — structured case facts */}
+          <section className="space-y-1.5">
+            <p className="eyebrow">Fall</p>
+            <dl className="space-y-1.5 text-xs">
+              <Row label="Phase" value={phaseLabel} />
+              <Row label="Typ-Hinweis" value={data.latestAnnouncementType} />
+              <Row label="Priorität" value={data.phasePriority} />
+              <Row label="Letzte Bekanntmachung" value={fmtDate(data.latestPublicationDate)} />
+              <Row label="Gericht" value={data.court} />
+              <Row label="Aktenzeichen" value={data.aktenzeichen} />
+            </dl>
+          </section>
 
           {/* Insolvenzverwalter — best available contact (inbox row first, then
               filled from the Bekanntmachung timeline). Kanzlei/Firm not yet
@@ -277,7 +274,11 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               </p>
             ) : adminContact.source === "none" ? (
               <p className="text-[11px] text-muted-foreground">
-                Keine strukturierten Kontaktdaten zum Insolvenzverwalter gefunden.
+                Keine strukturierten Kontaktdaten zum Insolvenzverwalter in dieser
+                Bekanntmachung gefunden.{" "}
+                {data.latestAnnouncementType
+                  ? `Beim Typ „${data.latestAnnouncementType}“ kann das korrekt sein, wenn keine Bestellungsdaten enthalten sind.`
+                  : "Bei Typen wie Prüfungstermin oder Anordnung kann das korrekt sein, wenn keine Bestellungsdaten enthalten sind."}
               </p>
             ) : null}
           </section>
