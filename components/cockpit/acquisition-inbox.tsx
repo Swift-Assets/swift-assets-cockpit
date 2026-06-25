@@ -7,9 +7,7 @@ import {
   type CaseCardData,
 } from "@/components/cockpit/acquisition-case-card";
 import { EmptyState } from "@/components/cockpit/empty-state";
-import { WatchlistPipeline } from "@/components/cockpit/watchlist-pipeline";
-import type { InternalWatchlistRow } from "@/lib/cockpit/watchlist-internal.queries";
-import type { AcquisitionLead } from "@/lib/cockpit/acquisition.queries";
+import type { AcquisitionInboxRow } from "@/lib/cockpit/acquisition-inbox.queries";
 import type { AiCaseReviewRow } from "@/lib/cockpit/ai-reviews.queries";
 
 type SegKey = "neu" | "watching" | "pursuing" | "passed" | "nachlass" | "all";
@@ -23,23 +21,30 @@ const SEGMENTS: { key: SegKey; label: string }[] = [
   { key: "all", label: "Alle" },
 ];
 
-function watchedToCard(
-  r: InternalWatchlistRow,
+function inboxStatusToCard(s: AcquisitionInboxRow["inbox_status"]): CaseCardData["status"] {
+  if (s === "neu") return "neu";
+  if (s === "pursuing") return "pursuing";
+  if (s === "passed") return "passed";
+  return "watching";
+}
+
+function rowToCard(
+  r: AcquisitionInboxRow,
   aiReviewByKey: Record<string, AiCaseReviewRow>,
   draftKeySet: Set<string>,
 ): CaseCardData {
   const isNachlass = r.kind === "nachlass";
-  const status = (r.status as CaseCardData["status"]) ?? "watching";
-  const key = `${r.kind}:${r.watch_id}`;
+  const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
   return {
-    key: `watch:${r.watch_id}`,
+    key: r.case_key,
     kind: isNachlass ? "nachlass" : "company",
-    source: "watch",
+    source: r.source === "watchlist" ? "watch" : "lead",
     entityId: r.entity_id,
     watchId: r.watch_id,
-    subjectId: r.subject_id,
+    detectionId: r.detection_id,
+    subjectId: isNachlass ? r.detection_id : r.entity_id,
     title: isNachlass
-      ? (r.safe_display_label ?? "Nachlassverfahren")
+      ? (r.person_name ?? r.safe_display_label ?? "Nachlassverfahren")
       : (r.display_title ?? r.safe_display_label ?? "—"),
     city: r.city,
     bundesland: r.bundesland,
@@ -58,85 +63,36 @@ function watchedToCard(
     financialDataStatus: r.financial_data_status,
     missingDataFlags: r.missing_data_flags ?? [],
     sourceQualityFlags: r.source_quality_flags ?? [],
-    status: status === "pursuing" ? "pursuing" : status === "passed" ? "passed" : "watching",
-    summaryAr: aiReviewByKey[key]?.summary_ar ?? null,
-    hasDraft: draftKeySet.has(key),
-  };
-}
-
-function leadToCard(l: AcquisitionLead): CaseCardData {
-  return {
-    key: `lead:${l.entity_id}`,
-    kind: "company",
-    source: "lead",
-    entityId: l.entity_id,
-    watchId: null,
-    subjectId: l.entity_id,
-    title: l.company_name,
-    city: l.city,
-    bundesland: null,
-    court: l.court,
-    aktenzeichen: l.case_number,
-    latestPhase: l.phase,
-    latestAnnouncementType: null,
-    phasePriority: l.phase_priority,
-    preVerteilung: true, // leads are filtered to the acquisition window
-    latestPublicationDate: l.announcement_date,
-    administratorName: l.insolvency_administrator,
-    administratorEmail: null,
-    administratorPhone: null,
-    handelsregisterStatus: null,
-    bundesanzeigerStatus: null,
-    financialDataStatus: null,
-    missingDataFlags: [],
-    sourceQualityFlags: [],
-    status: "neu",
-    summaryAr: null,
-    hasDraft: false,
+    status: inboxStatusToCard(r.inbox_status),
+    summaryAr: r.watch_id ? (aiReviewByKey[watchKey]?.summary_ar ?? null) : null,
+    hasDraft: r.watch_id ? draftKeySet.has(watchKey) : false,
   };
 }
 
 export function AcquisitionInbox({
-  watchedRows,
-  leads,
+  rows,
   aiReviewByKey,
   draftKeys,
-  openTaskKeys,
 }: {
-  watchedRows: InternalWatchlistRow[];
-  leads: AcquisitionLead[];
+  rows: AcquisitionInboxRow[];
   aiReviewByKey: Record<string, AiCaseReviewRow>;
   draftKeys: string[];
-  openTaskKeys: string[];
 }) {
   const [segment, setSegment] = useState<SegKey>("neu");
 
   const { cards, counts } = useMemo(() => {
     const draftKeySet = new Set(draftKeys);
-    const watchedEntityIds = new Set(
-      watchedRows
-        .filter((r) => r.kind === "company" && r.subject_id)
-        .map((r) => r.subject_id as string),
-    );
-    const watchedCards = watchedRows.map((r) =>
-      watchedToCard(r, aiReviewByKey, draftKeySet),
-    );
-    // New leads: real, in-window company cases not yet on the watchlist.
-    const leadCards = leads
-      .filter((l) => !watchedEntityIds.has(l.entity_id))
-      .map(leadToCard);
-
-    const all = [...leadCards, ...watchedCards];
+    const all = rows.map((r) => rowToCard(r, aiReviewByKey, draftKeySet));
     const counts: Record<SegKey, number> = {
-      neu: leadCards.length,
-      watching: watchedCards.filter((c) => c.status === "watching").length,
-      pursuing: watchedCards.filter((c) => c.status === "pursuing").length,
-      passed: watchedCards.filter((c) => c.status === "passed").length,
-      nachlass: watchedCards.filter((c) => c.kind === "nachlass").length,
+      neu: all.filter((c) => c.status === "neu").length,
+      watching: all.filter((c) => c.source === "watch" && c.status === "watching").length,
+      pursuing: all.filter((c) => c.status === "pursuing").length,
+      passed: all.filter((c) => c.status === "passed").length,
+      nachlass: all.filter((c) => c.kind === "nachlass").length,
       all: all.length,
     };
     return { cards: all, counts };
-  }, [watchedRows, leads, aiReviewByKey, draftKeys]);
+  }, [rows, aiReviewByKey, draftKeys]);
 
   const visible = useMemo(() => {
     switch (segment) {
@@ -169,9 +125,7 @@ export function AcquisitionInbox({
               onClick={() => setSegment(s.key)}
               className={cn(
                 "flex shrink-0 items-center gap-2 px-4 py-2 text-[13px] font-medium tracking-wide transition-colors",
-                active
-                  ? "bg-ink text-paper"
-                  : "text-muted-foreground hover:text-foreground",
+                active ? "bg-ink text-paper" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {s.label}
@@ -197,23 +151,6 @@ export function AcquisitionInbox({
           ))}
         </div>
       )}
-
-      {/* Table fallback (secondary) */}
-      {watchedRows.length > 0 ? (
-        <details className="border border-border bg-card">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
-            Tabellarische Ansicht
-          </summary>
-          <div className="border-t border-border p-4">
-            <WatchlistPipeline
-              rows={watchedRows}
-              openTaskKeys={openTaskKeys}
-              activeDraftKeys={draftKeys}
-              aiReviewByKey={aiReviewByKey}
-            />
-          </div>
-        </details>
-      ) : null}
     </div>
   );
 }

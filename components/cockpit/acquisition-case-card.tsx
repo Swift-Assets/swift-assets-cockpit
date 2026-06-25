@@ -15,6 +15,7 @@ import { buildOutreachPreview } from "@/lib/cockpit/email-template";
 import {
   updateStatusAction,
   watchCompanyAction,
+  watchNachlassAction,
 } from "@/app/cockpit/watchlist/actions";
 import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-drafts/actions";
 
@@ -27,6 +28,7 @@ export interface CaseCardData {
   source: "lead" | "watch";
   entityId: string | null;
   watchId: string | null;
+  detectionId: string | null;
   subjectId: string | null;
   title: string;
   city: string | null;
@@ -112,20 +114,24 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
     });
   }
 
-  function follow() {
+  function changeStatus(target: "pursuing" | "passed", okMsg: string) {
     if (data.source === "watch" && data.subjectId) {
-      run(() => updateStatusAction(data.kind, data.subjectId as string, "pursuing"), "Als Kontakt markiert.");
-    } else if (data.source === "lead" && data.entityId) {
-      run(() => watchCompanyAction(data.entityId as string, "pursuing", "", ""), "Übernommen (Kontakt).");
+      run(() => updateStatusAction(data.kind, data.subjectId as string, target), okMsg);
+    } else if (data.source === "lead" && data.kind === "company" && data.entityId) {
+      run(() => watchCompanyAction(data.entityId as string, target, "", ""), okMsg);
+    } else if (data.source === "lead" && data.kind === "nachlass" && data.detectionId) {
+      run(() => watchNachlassAction(data.detectionId as string, target, "", ""), okMsg);
+    } else {
+      setError("Aktion nicht möglich: fehlende Fall-ID.");
     }
   }
 
+  function follow() {
+    changeStatus("pursuing", "Als Kontakt markiert.");
+  }
+
   function ignore() {
-    if (data.source === "watch" && data.subjectId) {
-      run(() => updateStatusAction(data.kind, data.subjectId as string, "passed"), "Ignoriert.");
-    } else if (data.source === "lead" && data.entityId) {
-      run(() => watchCompanyAction(data.entityId as string, "passed", "", ""), "Ignoriert.");
-    }
+    changeStatus("passed", "Ignoriert.");
   }
 
   function generateEmail() {
@@ -138,7 +144,7 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
 
   const emailDisabled = pending || !data.watchId;
   const emailTitle = !data.watchId
-    ? "Zuerst beobachten/übernehmen, um einen Entwurf zu erstellen."
+    ? "Zuerst übernehmen, um einen Entwurf zu erstellen."
     : data.hasDraft
       ? "Es existiert bereits ein Entwurf — erneut erstellen."
       : "Erstellt einen editierbaren Entwurf (kein Versand).";
