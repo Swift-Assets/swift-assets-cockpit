@@ -39,6 +39,39 @@ export async function getCompanyActivitySummaries(): Promise<CompanyActivityResu
   }
 }
 
+/**
+ * Reads activity summaries ONLY for the given entity IDs (the entities actually
+ * present in the current inbox), instead of every summary visible to the user.
+ * De-duplicates and chunks the `.in()` filter to keep each request small.
+ * Read-only and fail-safe (returns available:false on any error).
+ */
+export async function getCompanyActivitySummariesForEntities(
+  entityIds: (string | null)[],
+): Promise<CompanyActivityResult> {
+  const ids = Array.from(
+    new Set(entityIds.filter((id): id is string => Boolean(id))),
+  );
+  if (ids.length === 0) return { available: true, rows: [] };
+
+  const CHUNK = 200;
+  try {
+    const supabase = await createClient();
+    const out: CompanyActivityRow[] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { data, error } = await supabase
+        .from("v_cockpit_company_activity")
+        .select("entity_id, company_activity_summary_ar, company_activity_source")
+        .in("entity_id", slice);
+      if (error) return { available: false, rows: [] };
+      if (data) out.push(...(data as CompanyActivityRow[]));
+    }
+    return { available: true, rows: out };
+  } catch {
+    return { available: false, rows: [] };
+  }
+}
+
 /** Map entity_id → Arabic activity summary, for O(1) lookup when mapping cards. */
 export function companyActivityByEntityId(
   rows: CompanyActivityRow[],

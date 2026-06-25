@@ -13,7 +13,7 @@ import {
 } from "@/lib/cockpit/ai-reviews.queries";
 import {
   companyActivityByEntityId,
-  getCompanyActivitySummaries,
+  getCompanyActivitySummariesForEntities,
 } from "@/lib/cockpit/company-activity.queries";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +28,21 @@ export const dynamic = "force-dynamic";
  * person_name is internal-only; no raw text/raw_json/source_snapshot.
  */
 export default async function WatchlistPage() {
-  const [inbox, drafts, aiReviews, activity] = await Promise.all([
+  // Inbox first; the others are independent of it except company activity, which
+  // we scope to the entity IDs actually present in the inbox (not every summary).
+  const [inbox, drafts, aiReviews] = await Promise.all([
     getAcquisitionInbox(),
     getOutreachDrafts(),
     getAiCaseReviews(),
-    getCompanyActivitySummaries(),
   ]);
+
+  const companyEntityIds = inbox.available
+    ? inbox.rows
+        .filter((r) => r.kind === "company" && r.entity_id)
+        .map((r) => r.entity_id as string)
+    : [];
+
+  const activity = await getCompanyActivitySummariesForEntities(companyEntityIds);
 
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
   const aiReviewByKey = activeAiReviewByWatchKey(aiReviews.rows);

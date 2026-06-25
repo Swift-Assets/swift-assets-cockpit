@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { memo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -107,7 +107,7 @@ function fmtDate(value: string | null): string {
 const AR_PLACEHOLDER = "ملخص AI غير متوفر بعد.";
 const ACTIVITY_PLACEHOLDER = "وصف نشاط الشركة غير متوفر بعد.";
 
-export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
+function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -443,6 +443,13 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
     </div>
   );
 }
+
+/**
+ * Memoized: card `data` objects are stable across parent re-renders (built in a
+ * useMemo in the inbox), so paginating ("Mehr laden") or any parent state change
+ * does not re-render already-mounted cards. Per-card expand state is internal.
+ */
+export const AcquisitionCaseCard = memo(AcquisitionCaseCardImpl);
 
 function Row({ label, value }: { label: string; value: string | null }) {
   return (

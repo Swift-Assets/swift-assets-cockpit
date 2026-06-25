@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   AcquisitionCaseCard,
@@ -137,6 +137,20 @@ export function AcquisitionInbox({
     }
   }, [cards, segment]);
 
+  // Render only a slice of the (potentially thousands of) matching cards, with a
+  // "Mehr laden" button. Reset the window whenever the filters change so the user
+  // always starts at the top of the new list.
+  const PAGE_SIZE = 24;
+  const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleLimit(PAGE_SIZE);
+  }, [segment, typeFilter]);
+
+  const visibleLimited = useMemo(
+    () => visible.slice(0, visibleLimit),
+    [visible, visibleLimit],
+  );
+
   return (
     <div className="space-y-5">
       {/* Global type filter (Firma / Nachlass) — applies to the whole list */}
@@ -193,11 +207,28 @@ export function AcquisitionInbox({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((c) => (
-            <AcquisitionCaseCard key={c.key} data={c} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleLimited.map((c) => (
+              <AcquisitionCaseCard key={c.key} data={c} />
+            ))}
+          </div>
+
+          <div className="flex flex-col items-center gap-2 pt-1">
+            <p className="text-xs tabular-nums text-muted-foreground">
+              Zeige {visibleLimited.length} von {visible.length} Fällen
+            </p>
+            {visible.length > visibleLimit ? (
+              <button
+                type="button"
+                onClick={() => setVisibleLimit((n) => n + PAGE_SIZE)}
+                className="border border-border bg-card px-4 py-2 text-[13px] font-medium tracking-wide text-foreground transition-colors hover:bg-muted/60"
+              >
+                Mehr laden
+              </button>
+            ) : null}
+          </div>
+        </>
       )}
     </div>
   );
