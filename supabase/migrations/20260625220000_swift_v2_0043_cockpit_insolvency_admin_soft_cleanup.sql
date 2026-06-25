@@ -20,16 +20,20 @@
 --   (valid/suspect/invalid/quarantined) is never overwritten.
 -- =============================================================================
 
+with cls as (
+    select id,
+           swift_v2.fn_classify_insolvency_administrator_identity(
+               display_name, email, phone, address, source_count
+           ) as classification
+    from swift_v2.insolvency_administrators
+    where quality_status = 'unreviewed'
+)
 update swift_v2.insolvency_administrators ad
-set quality_status     = (c.classification->>'quality_status'),
-    quality_reason     = (c.classification->>'reason'),
-    is_visible         = (c.classification->>'is_visible')::boolean,
+set quality_status     = (cls.classification->>'quality_status'),
+    quality_reason     = (cls.classification->>'reason'),
+    is_visible         = (cls.classification->>'is_visible')::boolean,
     quality_checked_at = now(),
     quality_checked_by = 'phase_0050',
     updated_at         = now()
-from lateral (
-    select swift_v2.fn_classify_insolvency_administrator_identity(
-        ad.display_name, ad.email, ad.phone, ad.address, ad.source_count
-    ) as classification
-) c
-where ad.quality_status = 'unreviewed';
+from cls
+where cls.id = ad.id;

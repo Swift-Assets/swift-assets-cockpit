@@ -238,15 +238,16 @@ select
     ad.source_count,
     ad.first_seen_at,
     ad.last_seen_at,
-    ad.quality_status,
-    ad.quality_reason,
-    ad.is_visible,
     (select count(*) from swift_v2.insolvency_administrator_mentions m
        where m.administrator_id = ad.id)           as latest_cases_count,
     (ad.email is not null)                          as has_email,
     (ad.phone is not null)                          as has_phone,
     (ad.address is not null)                        as has_address,
-    (ad.firm is not null)                           as has_firm
+    (ad.firm is not null)                           as has_firm,
+    -- New columns APPENDED at the end (create-or-replace cannot insert mid-list).
+    ad.quality_status,
+    ad.quality_reason,
+    ad.is_visible
 from swift_v2.insolvency_administrators ad
 where ad.is_visible = true
   and ad.quality_status not in ('invalid','quarantined')
