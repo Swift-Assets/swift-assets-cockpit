@@ -16,6 +16,8 @@ export type PhaseLabel =
   | "schlussverteilung"
   | "aufhebung"
   | "einstellung_mangels_masse"
+  | "restschuldbefreiung"
+  | "verguetungsfestsetzung"
   | "unknown";
 
 export type PhasePriority = "high" | "low" | "monitor" | "unknown";
@@ -39,6 +41,8 @@ export const PHASE_LABEL_DE: Record<PhaseLabel, string> = {
   schlussverteilung: "Schlussverteilung",
   aufhebung: "Aufhebung",
   einstellung_mangels_masse: "Einstellung (Masse)",
+  restschuldbefreiung: "Restschuldbefreiung",
+  verguetungsfestsetzung: "Vergütungsfestsetzung",
   unknown: "Unbekannt",
 };
 
@@ -58,6 +62,10 @@ export function phaseLabel(
   if (/aufhebung/.test(t)) return "aufhebung";
   if (/(einstellung|mangels masse|masseunzulänglich|masseunzulaenglich)/.test(t))
     return "einstellung_mangels_masse";
+  // NEW (0037): late-stage / administrative types previously left as "unknown".
+  if (/restschuldbefreiung/.test(t)) return "restschuldbefreiung";
+  if (/(vergütungsfestsetzung|verguetungsfestsetzung|vergütung|verguetung)/.test(t))
+    return "verguetungsfestsetzung";
 
   switch (phaseHint) {
     case "preliminary_administration":
@@ -87,6 +95,9 @@ export function phasePriority(label: PhaseLabel): PhasePriority {
     case "schlussverteilung":
     case "aufhebung":
     case "einstellung_mangels_masse":
+    // NEW (0037): late-stage / administrative -> track only.
+    case "restschuldbefreiung":
+    case "verguetungsfestsetzung":
       return "monitor";
     default:
       return "unknown";
