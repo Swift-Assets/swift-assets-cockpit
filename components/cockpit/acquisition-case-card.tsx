@@ -38,6 +38,7 @@ export interface CaseCardData {
   administratorName: string | null;
   administratorEmail: string | null;
   administratorPhone: string | null;
+  administratorAddress: string | null;
   handelsregisterStatus: string | null;
   bundesanzeigerStatus: string | null;
   financialDataStatus: string | null;
@@ -231,13 +232,14 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
             </p>
           </section>
 
-          {/* Insolvenzverwalter */}
+          {/* Insolvenzverwalter (Kanzlei/Firm not yet exposed by the safe view — TODO) */}
           <section className="space-y-1.5">
             <p className="eyebrow">Insolvenzverwalter</p>
             <dl className="space-y-1.5 text-xs">
               <Row label="Name" value={data.administratorName} />
-              <Row label="E-Mail" value={data.administratorEmail} />
-              <Row label="Telefon" value={data.administratorPhone} />
+              <ContactRow label="E-Mail" value={data.administratorEmail} kind="email" />
+              <ContactRow label="Telefon" value={data.administratorPhone} kind="phone" />
+              <Row label="Adresse" value={data.administratorAddress} />
             </dl>
           </section>
 
@@ -340,6 +342,37 @@ function Row({ label, value }: { label: string; value: string | null }) {
     <div className="flex items-start justify-between gap-3">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-right font-medium">{value ?? "—"}</dd>
+    </div>
+  );
+}
+
+/**
+ * Like Row, but renders a mailto:/tel: link when a value is present. These are
+ * plain links — clicking opens the user's mail/phone app; nothing is sent.
+ */
+function ContactRow({
+  label,
+  value,
+  kind,
+}: {
+  label: string;
+  value: string | null;
+  kind: "email" | "phone";
+}) {
+  const v = value?.trim();
+  if (!v) return <Row label={label} value={null} />;
+  const href = kind === "email" ? `mailto:${v}` : `tel:${v.replace(/\s+/g, "")}`;
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">
+        <a
+          href={href}
+          className="underline underline-offset-2 hover:text-muted-foreground"
+        >
+          {v}
+        </a>
+      </dd>
     </div>
   );
 }

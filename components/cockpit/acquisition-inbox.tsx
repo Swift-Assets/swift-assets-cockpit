@@ -55,6 +55,7 @@ function rowToCard(
     administratorName: r.administrator_name,
     administratorEmail: r.administrator_email,
     administratorPhone: r.administrator_phone,
+    administratorAddress: r.administrator_address,
     handelsregisterStatus: r.handelsregister_status,
     bundesanzeigerStatus: r.bundesanzeiger_status,
     financialDataStatus: r.financial_data_status,
