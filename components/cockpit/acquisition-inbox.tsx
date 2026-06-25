@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   AcquisitionCaseCard,
@@ -8,10 +9,13 @@ import {
 } from "@/components/cockpit/acquisition-case-card";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import type { AcquisitionInboxRow } from "@/lib/cockpit/acquisition-inbox.queries";
-import type { AiCaseReviewRow } from "@/lib/cockpit/ai-reviews.queries";
 
 type SegKey = "neu" | "watching" | "pursuing" | "passed" | "nachlass" | "all";
 type TypeKey = "all" | "company" | "nachlass";
+
+// Keep in sync with sanitizeInboxLimit() in acquisition-inbox.queries.ts.
+const MAX_SERVER_LIMIT = 1000;
+const SERVER_STEP = 240;
 
 const TYPE_FILTERS: { key: TypeKey; label: string }[] = [
   { key: "all", label: "Alle Typen" },
@@ -37,13 +41,11 @@ function inboxStatusToCard(s: AcquisitionInboxRow["inbox_status"]): CaseCardData
 
 function rowToCard(
   r: AcquisitionInboxRow,
-  aiReviewByKey: Record<string, AiCaseReviewRow>,
   draftKeySet: Set<string>,
   activityByEntityId: Record<string, string>,
 ): CaseCardData {
   const isNachlass = r.kind === "nachlass";
   const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
-  const review = r.watch_id ? aiReviewByKey[watchKey] : undefined;
   const companyActivityAr =
     !isNachlass && r.entity_id ? (activityByEntityId[r.entity_id] ?? null) : null;
   return {
@@ -76,27 +78,24 @@ function rowToCard(
     sourceQualityFlags: r.source_quality_flags ?? [],
     status: inboxStatusToCard(r.inbox_status),
     companyActivityAr,
-    summaryAr: review?.summary_ar ?? null,
-    aiScore: review?.acquisition_score ?? null,
-    aiPriority: review?.priority ?? null,
-    aiReasoningAr: review?.reasoning_ar ?? null,
-    aiRiskFlags: review?.risk_flags ?? [],
-    aiNextAction: review?.recommended_next_action ?? null,
-    hasReview: Boolean(review),
     hasDraft: r.watch_id ? draftKeySet.has(watchKey) : false,
   };
 }
 
 export function AcquisitionInbox({
   rows,
-  aiReviewByKey,
   draftKeys,
   activityByEntityId,
+  loadedCount,
+  totalCount,
+  serverLimit,
 }: {
   rows: AcquisitionInboxRow[];
-  aiReviewByKey: Record<string, AiCaseReviewRow>;
   draftKeys: string[];
   activityByEntityId: Record<string, string>;
+  loadedCount: number;
+  totalCount: number | null;
+  serverLimit: number;
 }) {
   const [segment, setSegment] = useState<SegKey>("neu");
   const [typeFilter, setTypeFilter] = useState<TypeKey>("all");
@@ -106,7 +105,7 @@ export function AcquisitionInbox({
     // Global Firma/Nachlass filter — applied BEFORE segment counts so tabs and
     // the visible grid stay consistent with the active type.
     const all = rows
-      .map((r) => rowToCard(r, aiReviewByKey, draftKeySet, activityByEntityId))
+      .map((r) => rowToCard(r, draftKeySet, activityByEntityId))
       .filter((c) => typeFilter === "all" || c.kind === typeFilter);
     const counts: Record<SegKey, number> = {
       neu: all.filter((c) => c.status === "neu").length,
@@ -117,7 +116,7 @@ export function AcquisitionInbox({
       all: all.length,
     };
     return { cards: all, counts };
-  }, [rows, aiReviewByKey, draftKeys, activityByEntityId, typeFilter]);
+  }, [rows, draftKeys, activityByEntityId, typeFilter]);
 
   const visible = useMemo(() => {
     switch (segment) {
@@ -226,6 +225,27 @@ export function AcquisitionInbox({
               >
                 Mehr laden
               </button>
+            ) : null}
+
+            {/* Server-side cap status + optional larger server fetch */}
+            {totalCount !== null ? (
+              <p className="text-[11px] tabular-nums text-muted-foreground">
+                Serverseitig geladen: {loadedCount.toLocaleString("de-DE")} von{" "}
+                {totalCount.toLocaleString("de-DE")} Fällen
+              </p>
+            ) : null}
+            {totalCount !== null &&
+            totalCount > loadedCount &&
+            serverLimit < MAX_SERVER_LIMIT ? (
+              <Link
+                href={`/cockpit/watchlist?limit=${Math.min(
+                  serverLimit + SERVER_STEP,
+                  MAX_SERVER_LIMIT,
+                )}`}
+                className="text-[12px] font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground"
+              >
+                Mehr vom Server laden
+              </Link>
             ) : null}
           </div>
         </>

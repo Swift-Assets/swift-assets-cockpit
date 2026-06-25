@@ -47,27 +47,60 @@ export interface AcquisitionInboxRow {
 export interface AcquisitionInboxResult {
   available: boolean;
   rows: AcquisitionInboxRow[];
+  loadedCount: number;
+  totalCount: number | null;
+  limit: number;
 }
 
 const COLUMNS =
   "case_key, kind, source, source_id, entity_id, detection_id, watch_id, is_watched, watch_status, inbox_status, display_title, safe_display_label, person_name, birth_date, city, bundesland, court, aktenzeichen, latest_publication_date, latest_announcement_type, latest_phase, phase_priority, pre_verteilung_relevance, administrator_name, administrator_email, administrator_phone, administrator_address, handelsregister_status, bundesanzeiger_status, financial_data_status, source_quality_flags, missing_data_flags, outreach_ready, outreach_blocked_reason, created_at, updated_at";
 
+const DEFAULT_LIMIT = 240;
+const MIN_LIMIT = 24;
+const MAX_LIMIT = 1000;
+
+/** Clamp a requested limit into [MIN_LIMIT, MAX_LIMIT]; fall back to default. */
+export function sanitizeInboxLimit(value: unknown): number {
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseInt(value, 10)
+        : NaN;
+  if (!Number.isFinite(n)) return DEFAULT_LIMIT;
+  return Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, Math.trunc(n)));
+}
+
 /**
- * Reads the unified Acquisition Inbox view. Fail-safe: returns
- * { available:false, rows:[] } if the view is absent (migration 0034 not yet
- * applied) or on any error — never throws a raw Supabase error into the UI.
- * Read-only. Runs under the caller's RLS session (auth.uid()).
+ * Reads the unified Acquisition Inbox view with a SERVER-SIDE cap so the page
+ * never pulls the full (~21k row) result into memory. Ordered by latest
+ * publication date desc and capped to `limit` (default 240, max 1000). Requests
+ * an exact total count so the UI can show "geladen X von Y". Fail-safe: returns
+ * { available:false, rows:[] } if the view is absent or on any error. Read-only.
+ * Runs under the caller's RLS session (auth.uid()).
  */
-export async function getAcquisitionInbox(): Promise<AcquisitionInboxResult> {
+export async function getAcquisitionInbox(
+  options?: { limit?: number },
+): Promise<AcquisitionInboxResult> {
+  const limit = sanitizeInboxLimit(options?.limit);
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("v_cockpit_acquisition_inbox")
-      .select(COLUMNS)
-      .order("latest_publication_date", { ascending: false, nullsFirst: false });
-    if (error) return { available: false, rows: [] };
-    return { available: true, rows: (data ?? []) as AcquisitionInboxRow[] };
+      .select(COLUMNS, { count: "exact" })
+      .order("latest_publication_date", { ascending: false, nullsFirst: false })
+      .range(0, limit - 1);
+    if (error)
+      return { available: false, rows: [], loadedCount: 0, totalCount: null, limit };
+    const rows = (data ?? []) as AcquisitionInboxRow[];
+    return {
+      available: true,
+      rows,
+      loadedCount: rows.length,
+      totalCount: typeof count === "number" ? count : null,
+      limit,
+    };
   } catch {
-    return { available: false, rows: [] };
+    return { available: false, rows: [], loadedCount: 0, totalCount: null, limit };
   }
 }

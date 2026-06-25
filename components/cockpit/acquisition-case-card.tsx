@@ -13,7 +13,6 @@ import {
   watchNachlassAction,
 } from "@/app/cockpit/watchlist/actions";
 import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-drafts/actions";
-import { generateAiCaseReviewAction } from "@/app/cockpit/ai-reviews/actions";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -47,13 +46,6 @@ export interface CaseCardData {
   status: CaseStatus;
   /** Company business-activity description (Arabic) — shown on the card exterior. */
   companyActivityAr: string | null;
-  summaryAr: string | null;
-  aiScore: number | null;
-  aiPriority: string | null;
-  aiReasoningAr: string | null;
-  aiRiskFlags: string[];
-  aiNextAction: string | null;
-  hasReview: boolean;
   hasDraft: boolean;
 }
 
@@ -73,24 +65,6 @@ function priorityVariant(p: string | null): "red" | "yellow" | "muted" {
   return "muted";
 }
 
-/** AI review priority (low|medium|high|urgent) → badge variant + German label. */
-function aiPriorityMeta(
-  p: string | null,
-): { label: string; variant: "red" | "yellow" | "green" | "muted" } {
-  switch (p) {
-    case "urgent":
-      return { label: "Dringend", variant: "red" };
-    case "high":
-      return { label: "Hoch", variant: "red" };
-    case "medium":
-      return { label: "Mittel", variant: "yellow" };
-    case "low":
-      return { label: "Niedrig", variant: "green" };
-    default:
-      return { label: "—", variant: "muted" };
-  }
-}
-
 function fmtDate(value: string | null): string {
   if (!value) return "—";
   try {
@@ -104,7 +78,6 @@ function fmtDate(value: string | null): string {
   }
 }
 
-const AR_PLACEHOLDER = "ملخص AI غير متوفر بعد.";
 const ACTIVITY_PLACEHOLDER = "وصف نشاط الشركة غير متوفر بعد.";
 
 function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
@@ -165,24 +138,6 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
     );
   }
 
-  function generateAiReview() {
-    if (data.kind !== "company" || !data.watchId) return;
-    run(
-      () => generateAiCaseReviewAction("company", data.watchId as string),
-      "KI-Zusammenfassung erstellt.",
-    );
-  }
-
-  // AI generation is wired for watched company cases only (needs a watch_id).
-  const aiReview = data.kind === "company";
-  const aiDisabled = pending || !data.watchId;
-  const aiTitle = !data.watchId
-    ? "Zuerst übernehmen, um KI-Zusammenfassung zu erstellen."
-    : data.hasReview
-      ? "KI-Bewertung erneut erstellen (überschreibt die vorhandene)."
-      : "Erstellt eine interne KI-Bewertung (kein Versand, keine öffentliche Anzeige).";
-  const aiPriority = aiPriorityMeta(data.aiPriority);
-
   const emailDisabled = pending || !data.watchId;
   const emailTitle = !data.watchId
     ? "Zuerst übernehmen, um einen Entwurf zu erstellen."
@@ -217,8 +172,8 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
           </span>
         </div>
         {/* Card exterior summary: for companies, "what does this company do?"
-            (business activity) — NOT the insolvency/acquisition review, which is
-            kept inside expanded details. Nachlass keeps the existing summary. */}
+            (business activity). The insolvency/acquisition AI review block has
+            been removed from the cards. Nachlass shows no exterior AI text. */}
         {data.kind === "company" ? (
           <p dir="rtl" className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
             <span className="font-medium text-foreground">الوصف: </span>
@@ -226,11 +181,7 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               ? data.companyActivityAr
               : ACTIVITY_PLACEHOLDER}
           </p>
-        ) : (
-          <p dir="rtl" className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
-            {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
-          </p>
-        )}
+        ) : null}
       </button>
 
       {/* Expand toggle */}
@@ -263,73 +214,6 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               </p>
             </section>
           ) : null}
-
-          {/* KI-Zusammenfassung (AR) + Metadaten — acquisition/insolvency review */}
-          <section className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="eyebrow">KI-Zusammenfassung (AR)</p>
-              {data.hasReview ? (
-                <div className="flex items-center gap-1.5">
-                  {typeof data.aiScore === "number" ? (
-                    <Badge variant="muted">Score {data.aiScore}</Badge>
-                  ) : null}
-                  {data.aiPriority ? (
-                    <Badge variant={aiPriority.variant}>{aiPriority.label}</Badge>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-            <p dir="rtl" className="text-sm leading-relaxed text-foreground">
-              {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
-            </p>
-
-            {data.aiReasoningAr?.trim() ? (
-              <div className="space-y-1">
-                <p className="eyebrow">KI-Begründung (AR)</p>
-                <p dir="rtl" className="text-[13px] leading-relaxed text-muted-foreground">
-                  {data.aiReasoningAr}
-                </p>
-              </div>
-            ) : null}
-
-            {data.aiRiskFlags.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {data.aiRiskFlags.map((f) => (
-                  <Badge key={f} variant="yellow">
-                    {f}
-                  </Badge>
-                ))}
-              </div>
-            ) : null}
-
-            {data.aiNextAction?.trim() ? (
-              <p className="text-[11px] text-muted-foreground">
-                Nächster Schritt (KI): {data.aiNextAction}
-              </p>
-            ) : null}
-
-            {aiReview ? (
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={aiDisabled}
-                  title={aiTitle}
-                  onClick={generateAiReview}
-                >
-                  {data.hasReview
-                    ? "KI-Zusammenfassung aktualisieren"
-                    : "KI-Zusammenfassung erstellen"}
-                </Button>
-                {!data.watchId ? (
-                  <span className="text-[11px] text-muted-foreground">
-                    Zuerst übernehmen, um eine KI-Bewertung zu erstellen.
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-          </section>
 
           {/* Fall */}
           <section className="space-y-1.5">

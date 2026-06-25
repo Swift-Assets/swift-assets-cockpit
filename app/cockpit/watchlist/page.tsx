@@ -2,15 +2,14 @@ import { EmptyState } from "@/components/cockpit/empty-state";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { AcquisitionInbox } from "@/components/cockpit/acquisition-inbox";
-import { getAcquisitionInbox } from "@/lib/cockpit/acquisition-inbox.queries";
+import {
+  getAcquisitionInbox,
+  sanitizeInboxLimit,
+} from "@/lib/cockpit/acquisition-inbox.queries";
 import {
   activeOutreachDraftKeys,
   getOutreachDrafts,
 } from "@/lib/cockpit/outreach.queries";
-import {
-  activeAiReviewByWatchKey,
-  getAiCaseReviews,
-} from "@/lib/cockpit/ai-reviews.queries";
 import {
   companyActivityByEntityId,
   getCompanyActivitySummariesForEntities,
@@ -19,21 +18,27 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Acquisition Inbox (Phase 0035C) — card-first workflow on the unified backend
- * view swift_v2.v_cockpit_acquisition_inbox (getAcquisitionInbox): new company +
- * new Nachlass + watched company/Nachlass cases in one safe source. Arabic AI
- * summaries (v_cockpit_ai_case_reviews) and active outreach-draft keys are still
- * loaded to enrich watched cards. All actions use existing SECURITY DEFINER
- * RPCs; no email is sent. Privacy: safe internal fields only — Nachlass
- * person_name is internal-only; no raw text/raw_json/source_snapshot.
+ * Acquisition Inbox — card-first workflow on the unified backend view
+ * swift_v2.v_cockpit_acquisition_inbox (getAcquisitionInbox): new company + new
+ * Nachlass + watched company/Nachlass cases in one safe source. The inbox is
+ * capped SERVER-SIDE (default 240, max 1000 via ?limit=) so the page never loads
+ * the full ~21k result. Company activity summaries are loaded only for the
+ * loaded entity IDs. All actions use existing SECURITY DEFINER RPCs; no email is
+ * sent. Privacy: safe internal fields only — Nachlass person_name is
+ * internal-only; no raw text/raw_json/source_snapshot.
  */
-export default async function WatchlistPage() {
-  // Inbox first; the others are independent of it except company activity, which
-  // we scope to the entity IDs actually present in the inbox (not every summary).
-  const [inbox, drafts, aiReviews] = await Promise.all([
-    getAcquisitionInbox(),
+export default async function WatchlistPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string }>;
+}) {
+  const { limit: limitParam } = await searchParams;
+  const limit = sanitizeInboxLimit(limitParam);
+
+  // Inbox first (server-capped); company activity is scoped to the loaded rows.
+  const [inbox, drafts] = await Promise.all([
+    getAcquisitionInbox({ limit }),
     getOutreachDrafts(),
-    getAiCaseReviews(),
   ]);
 
   const companyEntityIds = inbox.available
@@ -45,7 +50,6 @@ export default async function WatchlistPage() {
   const activity = await getCompanyActivitySummariesForEntities(companyEntityIds);
 
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
-  const aiReviewByKey = activeAiReviewByWatchKey(aiReviews.rows);
   const activityByEntityId = companyActivityByEntityId(activity.rows);
 
   const watchedCompanyIds = inbox.available
@@ -77,9 +81,11 @@ export default async function WatchlistPage() {
       ) : (
         <AcquisitionInbox
           rows={inbox.rows}
-          aiReviewByKey={aiReviewByKey}
           draftKeys={draftKeys}
           activityByEntityId={activityByEntityId}
+          loadedCount={inbox.loadedCount}
+          totalCount={inbox.totalCount}
+          serverLimit={inbox.limit}
         />
       )}
     </div>
