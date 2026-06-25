@@ -35,7 +35,7 @@ const PHASE_DE: Record<string, string> = {
 /** Short Arabic gloss per internal phase key. */
 const PHASE_AR: Record<string, string> = {
   vorlaeufig: "مرحلة تمهيدية / تدبير قضائي مبكر ضمن Insolvenzverfahren (Anordnung / Sicherungsmaßnahme) قبل der Verteilung",
-  eroeffnung: "افتتاح إجراء الإعسار وتعيين مدير الإعسار",
+  eroeffnung: "افتتاح إجراء الإعسار رسميًا",
   berichtstermin: "موعد تقديم تقرير مدير الإعسار",
   pruefungstermin: "موعد فحص الديون المُعلَنة",
   verwertung: "مرحلة تسييل/بيع أصول الكتلة",
