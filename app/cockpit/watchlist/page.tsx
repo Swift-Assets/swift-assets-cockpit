@@ -11,6 +11,10 @@ import {
   activeAiReviewByWatchKey,
   getAiCaseReviews,
 } from "@/lib/cockpit/ai-reviews.queries";
+import {
+  companyActivityByEntityId,
+  getCompanyActivitySummaries,
+} from "@/lib/cockpit/company-activity.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -24,14 +28,16 @@ export const dynamic = "force-dynamic";
  * person_name is internal-only; no raw text/raw_json/source_snapshot.
  */
 export default async function WatchlistPage() {
-  const [inbox, drafts, aiReviews] = await Promise.all([
+  const [inbox, drafts, aiReviews, activity] = await Promise.all([
     getAcquisitionInbox(),
     getOutreachDrafts(),
     getAiCaseReviews(),
+    getCompanyActivitySummaries(),
   ]);
 
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
   const aiReviewByKey = activeAiReviewByWatchKey(aiReviews.rows);
+  const activityByEntityId = companyActivityByEntityId(activity.rows);
 
   const watchedCompanyIds = inbox.available
     ? inbox.rows
@@ -64,6 +70,7 @@ export default async function WatchlistPage() {
           rows={inbox.rows}
           aiReviewByKey={aiReviewByKey}
           draftKeys={draftKeys}
+          activityByEntityId={activityByEntityId}
         />
       )}
     </div>

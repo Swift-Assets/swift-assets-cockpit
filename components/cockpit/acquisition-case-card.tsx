@@ -45,6 +45,8 @@ export interface CaseCardData {
   missingDataFlags: string[];
   sourceQualityFlags: string[];
   status: CaseStatus;
+  /** Company business-activity description (Arabic) — shown on the card exterior. */
+  companyActivityAr: string | null;
   summaryAr: string | null;
   aiScore: number | null;
   aiPriority: string | null;
@@ -103,6 +105,7 @@ function fmtDate(value: string | null): string {
 }
 
 const AR_PLACEHOLDER = "ملخص AI غير متوفر بعد.";
+const ACTIVITY_PLACEHOLDER = "وصف نشاط الشركة غير متوفر بعد.";
 
 export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
   const router = useRouter();
@@ -213,10 +216,21 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
             {fmtDate(data.latestPublicationDate)}
           </span>
         </div>
-        {/* Arabic AI summary */}
-        <p dir="rtl" className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
-          {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
-        </p>
+        {/* Card exterior summary: for companies, "what does this company do?"
+            (business activity) — NOT the insolvency/acquisition review, which is
+            kept inside expanded details. Nachlass keeps the existing summary. */}
+        {data.kind === "company" ? (
+          <p dir="rtl" className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
+            <span className="font-medium text-foreground">الوصف: </span>
+            {data.companyActivityAr?.trim()
+              ? data.companyActivityAr
+              : ACTIVITY_PLACEHOLDER}
+          </p>
+        ) : (
+          <p dir="rtl" className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
+            {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
+          </p>
+        )}
       </button>
 
       {/* Expand toggle */}
@@ -233,7 +247,24 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
       {/* Inline expanded detail (replaces the old right-side drawer) */}
       {expanded ? (
         <div className="space-y-4 border-t border-border px-4 py-4">
-          {/* KI-Zusammenfassung (AR) + Metadaten */}
+          {/* Unternehmenstätigkeit (AR) — full business-activity description */}
+          {data.kind === "company" ? (
+            <section className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="eyebrow">Unternehmenstätigkeit (AR)</p>
+                {data.companyActivityAr?.trim() ? (
+                  <Badge variant="muted">Quelle: AI-Enrichment</Badge>
+                ) : null}
+              </div>
+              <p dir="rtl" className="text-sm leading-relaxed text-foreground">
+                {data.companyActivityAr?.trim()
+                  ? data.companyActivityAr
+                  : ACTIVITY_PLACEHOLDER}
+              </p>
+            </section>
+          ) : null}
+
+          {/* KI-Zusammenfassung (AR) + Metadaten — acquisition/insolvency review */}
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p className="eyebrow">KI-Zusammenfassung (AR)</p>

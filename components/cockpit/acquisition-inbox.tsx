@@ -39,10 +39,13 @@ function rowToCard(
   r: AcquisitionInboxRow,
   aiReviewByKey: Record<string, AiCaseReviewRow>,
   draftKeySet: Set<string>,
+  activityByEntityId: Record<string, string>,
 ): CaseCardData {
   const isNachlass = r.kind === "nachlass";
   const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
   const review = r.watch_id ? aiReviewByKey[watchKey] : undefined;
+  const companyActivityAr =
+    !isNachlass && r.entity_id ? (activityByEntityId[r.entity_id] ?? null) : null;
   return {
     key: r.case_key,
     kind: isNachlass ? "nachlass" : "company",
@@ -72,6 +75,7 @@ function rowToCard(
     missingDataFlags: r.missing_data_flags ?? [],
     sourceQualityFlags: r.source_quality_flags ?? [],
     status: inboxStatusToCard(r.inbox_status),
+    companyActivityAr,
     summaryAr: review?.summary_ar ?? null,
     aiScore: review?.acquisition_score ?? null,
     aiPriority: review?.priority ?? null,
@@ -87,10 +91,12 @@ export function AcquisitionInbox({
   rows,
   aiReviewByKey,
   draftKeys,
+  activityByEntityId,
 }: {
   rows: AcquisitionInboxRow[];
   aiReviewByKey: Record<string, AiCaseReviewRow>;
   draftKeys: string[];
+  activityByEntityId: Record<string, string>;
 }) {
   const [segment, setSegment] = useState<SegKey>("neu");
   const [typeFilter, setTypeFilter] = useState<TypeKey>("all");
@@ -100,7 +106,7 @@ export function AcquisitionInbox({
     // Global Firma/Nachlass filter — applied BEFORE segment counts so tabs and
     // the visible grid stay consistent with the active type.
     const all = rows
-      .map((r) => rowToCard(r, aiReviewByKey, draftKeySet))
+      .map((r) => rowToCard(r, aiReviewByKey, draftKeySet, activityByEntityId))
       .filter((c) => typeFilter === "all" || c.kind === typeFilter);
     const counts: Record<SegKey, number> = {
       neu: all.filter((c) => c.status === "neu").length,
@@ -111,7 +117,7 @@ export function AcquisitionInbox({
       all: all.length,
     };
     return { cards: all, counts };
-  }, [rows, aiReviewByKey, draftKeys, typeFilter]);
+  }, [rows, aiReviewByKey, draftKeys, activityByEntityId, typeFilter]);
 
   const visible = useMemo(() => {
     switch (segment) {
