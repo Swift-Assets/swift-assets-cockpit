@@ -12,6 +12,10 @@ import { getInternalWatchlist } from "@/lib/cockpit/watchlist-internal.queries";
 import { getSystemHealth } from "@/lib/cockpit/operations.queries";
 import { followUpBucket } from "@/lib/cockpit/watchlist";
 import { PHASE_LABEL_DE, type PhaseLabel } from "@/lib/cockpit/phase";
+import { searchDashboard } from "@/lib/cockpit/dashboard-search.queries";
+import { getInsolvencyAdministrators } from "@/lib/cockpit/insolvency-administrators.queries";
+import { DashboardSearchPanel } from "@/components/cockpit/dashboard-search-panel";
+import { InsolvencyAdminSearch } from "@/components/cockpit/insolvency-admin-search";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +39,33 @@ function formatDate(value: string | null): string {
   }
 }
 
-export default async function DashboardPage() {
-  const [leadsResult, internal, systemHealth] = await Promise.all([
+function str(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const searchFilters = {
+    q: str(sp.q),
+    dateFrom: str(sp.dateFrom),
+    dateTo: str(sp.dateTo),
+    phase: str(sp.phase),
+    activity: str(sp.activity),
+    court: str(sp.court),
+    city: str(sp.city),
+  };
+  const adminQuery = str(sp.admin_q);
+
+  const [leadsResult, internal, systemHealth, search, admins] = await Promise.all([
     getAcquisitionLeads(25),
     getInternalWatchlist(),
     getSystemHealth(),
+    searchDashboard(searchFilters),
+    getInsolvencyAdministrators(adminQuery),
   ]);
 
   const companyRows = internal.available
@@ -82,6 +108,63 @@ export default async function DashboardPage() {
         title="Operative Akquise-Übersicht"
         lead="Neue relevante Fälle, Akquise-Fenster, Verfahrensphasen, Insolvenzverwalter und fällige Follow-ups — auf einen Blick."
       />
+
+      {/* 0. Advanced search */}
+      <SectionCard
+        title="Suche"
+        description="Stichwort + Filter (Datum, Phase, Tätigkeit, Gericht, Ort) über Firmen-Insolvenzfälle. Nur sichere interne Felder; kein Bekanntmachungs-Rohtext."
+      >
+        <div id="suche" className="space-y-4">
+          <DashboardSearchPanel defaults={searchFilters} />
+
+          {!search.available ? (
+            <EmptyState
+              title="Suche noch nicht verfügbar"
+              description="Die interne Such-View (v_cockpit_dashboard_search_internal) ist noch nicht aktiviert."
+            />
+          ) : !search.active ? (
+            <p className="text-sm text-muted-foreground">
+              Geben Sie ein Stichwort ein oder setzen Sie Filter, um Fälle zu finden.
+            </p>
+          ) : search.rows.length === 0 ? (
+            <EmptyState
+              title="Keine Treffer"
+              description="Keine Fälle für diese Suche. Bitte Stichwort/Filter anpassen."
+            />
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs tabular-nums text-muted-foreground">
+                {search.count !== null
+                  ? `${Math.min(search.rows.length, search.limit)} von ${search.count} Treffern`
+                  : `${search.rows.length} Treffer`}
+              </p>
+              <ul className="divide-y divide-border/70 text-sm">
+                {search.rows.map((r) => (
+                  <li key={r.entity_id} className="flex items-start justify-between gap-3 py-2">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{r.display_title ?? "—"}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {[r.city, r.bundesland, r.court, r.aktenzeichen]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      {r.has_administrator ? <Badge variant="muted">Verwalter</Badge> : null}
+                      <Badge variant="muted">
+                        {PHASE_LABEL_DE[(r.latest_phase as PhaseLabel) ?? "unknown"] ?? "—"}
+                      </Badge>
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {formatDate(r.latest_publication_date)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* 1. Acquisition window overview */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -219,6 +302,87 @@ export default async function DashboardPage() {
           )}
         </SectionCard>
       </div>
+
+      {/* 4b. Insolvenzverwalter-Datenbank */}
+      <SectionCard
+        title="Insolvenzverwalter-Datenbank"
+        description="Interne Sammlung der in Insolvenzbekanntmachungen genannten Insolvenzverwalter (nur strukturierte Kontaktfelder)."
+      >
+        <div id="verwalter" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {admins.available && admins.total !== null
+                ? `Insolvenzverwalter gesamt: ${admins.total.toLocaleString("de-DE")}`
+                : "Insolvenzverwalter gesamt: —"}
+            </p>
+          </div>
+          <InsolvencyAdminSearch defaultValue={adminQuery} />
+
+          {!admins.available ? (
+            <EmptyState
+              title="Verwalter-Datenbank noch nicht verfügbar"
+              description="Die interne View (v_cockpit_insolvency_administrators_internal) ist noch nicht aktiviert."
+            />
+          ) : admins.rows.length === 0 ? (
+            <EmptyState
+              title="Keine Insolvenzverwalter gefunden"
+              description="Noch keine Daten oder keine Treffer für diese Suche."
+            />
+          ) : (
+            <div className="cockpit-scroll overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="py-2 pr-3 font-medium">Name</th>
+                    <th className="py-2 pr-3 font-medium">Kanzlei</th>
+                    <th className="py-2 pr-3 font-medium">E-Mail</th>
+                    <th className="py-2 pr-3 font-medium">Telefon</th>
+                    <th className="py-2 pr-3 font-medium">Ort</th>
+                    <th className="py-2 pr-3 text-right font-medium">Fälle</th>
+                    <th className="py-2 text-right font-medium">Zuletzt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/70">
+                  {admins.rows.map((a) => (
+                    <tr key={a.administrator_id}>
+                      <td className="py-2 pr-3 font-medium">{a.display_name ?? "—"}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{a.firm ?? "—"}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {a.email ? (
+                          <a href={`mailto:${a.email}`} className="underline underline-offset-2">
+                            {a.email}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {a.phone ? (
+                          <a
+                            href={`tel:${a.phone.replace(/\s+/g, "")}`}
+                            className="underline underline-offset-2"
+                          >
+                            {a.phone}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {[a.postal_code, a.city].filter(Boolean).join(" ") || "—"}
+                      </td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{a.source_count ?? 0}</td>
+                      <td className="py-2 text-right text-xs tabular-nums text-muted-foreground">
+                        {formatDate(a.last_seen_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* 5. Compact system status strip (operations lives on its own page) */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-card">
