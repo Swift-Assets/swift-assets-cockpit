@@ -11,6 +11,13 @@ import type { AcquisitionInboxRow } from "@/lib/cockpit/acquisition-inbox.querie
 import type { AiCaseReviewRow } from "@/lib/cockpit/ai-reviews.queries";
 
 type SegKey = "neu" | "watching" | "pursuing" | "passed" | "nachlass" | "all";
+type TypeKey = "all" | "company" | "nachlass";
+
+const TYPE_FILTERS: { key: TypeKey; label: string }[] = [
+  { key: "all", label: "Alle Typen" },
+  { key: "company", label: "Firma" },
+  { key: "nachlass", label: "Nachlass" },
+];
 
 const SEGMENTS: { key: SegKey; label: string }[] = [
   { key: "neu", label: "Neue Fälle" },
@@ -79,10 +86,15 @@ export function AcquisitionInbox({
   draftKeys: string[];
 }) {
   const [segment, setSegment] = useState<SegKey>("neu");
+  const [typeFilter, setTypeFilter] = useState<TypeKey>("all");
 
   const { cards, counts } = useMemo(() => {
     const draftKeySet = new Set(draftKeys);
-    const all = rows.map((r) => rowToCard(r, aiReviewByKey, draftKeySet));
+    // Global Firma/Nachlass filter — applied BEFORE segment counts so tabs and
+    // the visible grid stay consistent with the active type.
+    const all = rows
+      .map((r) => rowToCard(r, aiReviewByKey, draftKeySet))
+      .filter((c) => typeFilter === "all" || c.kind === typeFilter);
     const counts: Record<SegKey, number> = {
       neu: all.filter((c) => c.status === "neu").length,
       watching: all.filter((c) => c.source === "watch" && c.status === "watching").length,
@@ -92,7 +104,7 @@ export function AcquisitionInbox({
       all: all.length,
     };
     return { cards: all, counts };
-  }, [rows, aiReviewByKey, draftKeys]);
+  }, [rows, aiReviewByKey, draftKeys, typeFilter]);
 
   const visible = useMemo(() => {
     switch (segment) {
@@ -114,7 +126,30 @@ export function AcquisitionInbox({
 
   return (
     <div className="space-y-5">
-      {/* Segmented control */}
+      {/* Global type filter (Firma / Nachlass) — applies to the whole list */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="eyebrow">Typ</span>
+        <div className="flex gap-1 border border-border bg-card p-1">
+          {TYPE_FILTERS.map((t) => {
+            const active = typeFilter === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTypeFilter(t.key)}
+                className={cn(
+                  "px-3 py-1.5 text-[13px] font-medium tracking-wide transition-colors",
+                  active ? "bg-ink text-paper" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Workflow segments (status) — counts reflect the active type filter */}
       <div className="cockpit-scroll flex gap-1 overflow-x-auto border border-border bg-card p-1">
         {SEGMENTS.map((s) => {
           const active = segment === s.key;

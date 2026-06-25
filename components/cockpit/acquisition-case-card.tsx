@@ -5,11 +5,6 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DetailPanel,
-  DetailSection,
-  DetailField,
-} from "@/components/cockpit/detail-panel";
 import { PHASE_LABEL_DE, type PhaseLabel } from "@/lib/cockpit/phase";
 import { buildOutreachPreview } from "@/lib/cockpit/email-template";
 import {
@@ -87,7 +82,7 @@ const AR_PLACEHOLDER = "ملخص AI غير متوفر بعد.";
 export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -150,177 +145,169 @@ export function AcquisitionCaseCard({ data }: { data: CaseCardData }) {
       : "Erstellt einen editierbaren Entwurf (kein Versand).";
 
   return (
-    <>
-      <div className="flex flex-col border border-border bg-card transition-colors hover:bg-muted/40">
-        {/* Body (click → profile) */}
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex-1 px-4 pt-4 text-left"
-        >
-          <div className="flex items-center gap-1.5">
-            <Badge variant={status.variant}>{status.label}</Badge>
-            <Badge variant="outline">{data.kind === "nachlass" ? "Nachlass" : "Firma"}</Badge>
-            {data.preVerteilung ? <Badge variant="green">pre-Verteilung</Badge> : null}
-          </div>
-          <h3 className="mt-3 line-clamp-2 text-[15px] font-semibold tracking-tight">
-            {data.title}
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {[data.city, data.bundesland].filter(Boolean).join(", ") || "—"}
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Badge variant={priorityVariant(data.phasePriority)}>{phaseLabel}</Badge>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {fmtDate(data.latestPublicationDate)}
-            </span>
-          </div>
-          {/* Arabic AI summary */}
-          <p dir="rtl" className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
-            {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
-          </p>
-        </button>
-
-        {/* Expand toggle */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-3 flex items-center justify-center gap-1.5 border-t border-border py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-          aria-expanded={expanded}
-        >
-          {expanded ? "Weniger" : "Mehr Details"}
-          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-        </button>
-
-        {expanded ? (
-          <dl className="space-y-1.5 border-t border-border px-4 py-3 text-xs">
-            <Row label="Gericht" value={data.court} />
-            <Row label="Aktenzeichen" value={data.aktenzeichen} />
-            <Row label="Verwalter" value={data.administratorName} />
-            {data.administratorEmail ? <Row label="E-Mail" value={data.administratorEmail} /> : null}
-            {data.administratorPhone ? <Row label="Telefon" value={data.administratorPhone} /> : null}
-            <Row label="Handelsregister" value={data.handelsregisterStatus} />
-            <Row label="Bundesanzeiger" value={data.bundesanzeigerStatus} />
-            <Row label="Finanzdaten" value={data.financialDataStatus} />
-            {data.missingDataFlags.length > 0 ? (
-              <Row label="Lücken" value={data.missingDataFlags.join(", ")} />
-            ) : null}
-          </dl>
-        ) : null}
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-4 py-3">
-          <Button
-            type="button"
-            size="sm"
-            variant={data.status === "pursuing" ? "default" : "outline"}
-            disabled={pending}
-            onClick={follow}
-          >
-            تابع
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={pending}
-            onClick={ignore}
-          >
-            اهمل
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={emailDisabled}
-            title={emailTitle}
-            onClick={generateEmail}
-          >
-            E-Mail generieren
-          </Button>
-        </div>
-        {error ? <p className="px-4 pb-3 text-xs text-status-red">{error}</p> : null}
-        {done ? <p className="px-4 pb-3 text-xs text-status-green">{done}</p> : null}
-      </div>
-
-      {/* Profile drawer */}
-      <DetailPanel
-        open={open}
-        onClose={() => setOpen(false)}
-        title={data.title}
-        subtitle={[data.city, data.bundesland].filter(Boolean).join(", ") || undefined}
-        badges={
-          <>
-            <Badge variant={status.variant}>{status.label}</Badge>
-            <Badge variant="outline">{data.kind === "nachlass" ? "Nachlass" : "Firma"}</Badge>
-            <Badge variant={priorityVariant(data.phasePriority)}>{phaseLabel}</Badge>
-          </>
-        }
-        footer={
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button type="button" size="sm" variant="outline" disabled={pending} onClick={follow}>
-              تابع
-            </Button>
-            <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={ignore}>
-              اهمل
-            </Button>
-            <Button type="button" size="sm" variant="outline" disabled={emailDisabled} title={emailTitle} onClick={generateEmail}>
-              E-Mail generieren
-            </Button>
-            {error ? <span className="text-xs text-status-red">{error}</span> : null}
-            {done ? <span className="text-xs text-status-green">{done}</span> : null}
-          </div>
-        }
+    <div className="flex flex-col border border-border bg-card transition-colors hover:bg-muted/40">
+      {/* Body (click → expand inline; no sidebar/drawer) */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex-1 px-4 pt-4 text-left"
       >
-        <DetailSection title="KI-Zusammenfassung (AR)">
-          <p dir="rtl" className="text-sm leading-relaxed text-foreground">
-            {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
-          </p>
-        </DetailSection>
+        <div className="flex items-center gap-1.5">
+          <Badge variant={status.variant}>{status.label}</Badge>
+          <Badge variant="outline">{data.kind === "nachlass" ? "Nachlass" : "Firma"}</Badge>
+          {data.preVerteilung ? <Badge variant="green">pre-Verteilung</Badge> : null}
+        </div>
+        <h3 className="mt-3 line-clamp-2 text-[15px] font-semibold tracking-tight">
+          {data.title}
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {[data.city, data.bundesland].filter(Boolean).join(", ") || "—"}
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <Badge variant={priorityVariant(data.phasePriority)}>{phaseLabel}</Badge>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {fmtDate(data.latestPublicationDate)}
+          </span>
+        </div>
+        {/* Arabic AI summary */}
+        <p dir="rtl" className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
+          {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
+        </p>
+      </button>
 
-        <DetailSection title="Fall">
-          <DetailField label="Phase" value={phaseLabel} />
-          <DetailField label="Typ-Hinweis" value={data.latestAnnouncementType ?? "—"} />
-          <DetailField label="Priorität" value={data.phasePriority ?? "—"} />
-          <DetailField label="Letzte Bekanntmachung" value={fmtDate(data.latestPublicationDate)} />
-          <DetailField label="Gericht" value={data.court ?? "—"} />
-          <DetailField label="Aktenzeichen" value={data.aktenzeichen ?? "—"} />
-          <p className="pt-1 text-xs text-muted-foreground">
-            Detaillierte Bekanntmachungs-Timeline: noch nicht verfügbar (Backend).
-          </p>
-        </DetailSection>
+      {/* Expand toggle */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="mt-3 flex items-center justify-center gap-1.5 border-t border-border py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+        aria-expanded={expanded}
+      >
+        {expanded ? "Weniger" : "Mehr Details"}
+        {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
 
-        <DetailSection title="Insolvenzverwalter">
-          <DetailField label="Name" value={data.administratorName ?? "—"} />
-          <DetailField label="E-Mail" value={data.administratorEmail ?? "—"} />
-          <DetailField label="Telefon" value={data.administratorPhone ?? "—"} />
-        </DetailSection>
+      {/* Inline expanded detail (replaces the old right-side drawer) */}
+      {expanded ? (
+        <div className="space-y-4 border-t border-border px-4 py-4">
+          {/* KI-Zusammenfassung (AR) */}
+          <section className="space-y-1.5">
+            <p className="eyebrow">KI-Zusammenfassung (AR)</p>
+            <p dir="rtl" className="text-sm leading-relaxed text-foreground">
+              {data.summaryAr?.trim() ? data.summaryAr : AR_PLACEHOLDER}
+            </p>
+          </section>
 
-        <DetailSection title="Daten & Anreicherung">
-          <DetailField label="Handelsregister" value={data.handelsregisterStatus ?? "—"} />
-          <DetailField label="Bundesanzeiger" value={data.bundesanzeigerStatus ?? "—"} />
-          <DetailField label="Finanzdaten" value={data.financialDataStatus ?? "—"} />
-          <DetailField
-            label="Lücken"
-            value={data.missingDataFlags.length > 0 ? data.missingDataFlags.join(", ") : "—"}
-          />
-          <DetailField
-            label="Qualität"
-            value={data.sourceQualityFlags.length > 0 ? data.sourceQualityFlags.join(", ") : "—"}
-          />
-        </DetailSection>
+          {/* Fall */}
+          <section className="space-y-1.5">
+            <p className="eyebrow">Fall</p>
+            <dl className="space-y-1.5 text-xs">
+              <Row label="Phase" value={phaseLabel} />
+              <Row label="Typ-Hinweis" value={data.latestAnnouncementType} />
+              <Row label="Priorität" value={data.phasePriority} />
+              <Row label="Letzte Bekanntmachung" value={fmtDate(data.latestPublicationDate)} />
+              <Row label="Gericht" value={data.court} />
+              <Row label="Aktenzeichen" value={data.aktenzeichen} />
+            </dl>
+            <p className="text-[11px] text-muted-foreground">
+              Detaillierte Bekanntmachungs-Timeline: noch nicht verfügbar (Backend).
+            </p>
+          </section>
 
-        <DetailSection title="E-Mail-Vorschau (kein Versand)">
-          <p className="text-xs font-medium text-foreground">{preview.subject}</p>
-          <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-xs leading-relaxed text-muted-foreground">
-            {preview.body}
-          </pre>
-          <p className="pt-2 text-[11px] text-muted-foreground">
-            „E-Mail generieren“ erstellt einen editierbaren Entwurf unter E-Mail-Entwürfe — es wird nichts versendet.
-          </p>
-        </DetailSection>
-      </DetailPanel>
-    </>
+          {/* Insolvenzverwalter */}
+          <section className="space-y-1.5">
+            <p className="eyebrow">Insolvenzverwalter</p>
+            <dl className="space-y-1.5 text-xs">
+              <Row label="Name" value={data.administratorName} />
+              <Row label="E-Mail" value={data.administratorEmail} />
+              <Row label="Telefon" value={data.administratorPhone} />
+            </dl>
+          </section>
+
+          {/* Datenqualität (Bundesanzeiger intentionally hidden — retired) */}
+          <section className="space-y-1.5">
+            <p className="eyebrow">Datenqualität</p>
+            <dl className="space-y-1.5 text-xs">
+              <Row label="Handelsregister" value={data.handelsregisterStatus} />
+              <Row label="Finanzdaten" value={data.financialDataStatus} />
+              <Row
+                label="Lücken"
+                value={data.missingDataFlags.length > 0 ? data.missingDataFlags.join(", ") : null}
+              />
+              <Row
+                label="Qualität"
+                value={data.sourceQualityFlags.length > 0 ? data.sourceQualityFlags.join(", ") : null}
+              />
+            </dl>
+          </section>
+
+          {/* E-Mail preview — only after explicit click; never sent */}
+          {showEmail ? (
+            <section className="space-y-1.5 border-t border-border pt-4">
+              <p className="eyebrow">E-Mail-Vorschau (kein Versand)</p>
+              <p className="text-xs font-medium text-foreground">{preview.subject}</p>
+              <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-xs leading-relaxed text-muted-foreground">
+                {preview.body}
+              </pre>
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={emailDisabled}
+                  title={emailTitle}
+                  onClick={generateEmail}
+                >
+                  Entwurf speichern
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setShowEmail(false)}
+                >
+                  Schließen
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                „Entwurf speichern“ legt einen editierbaren Entwurf unter E-Mail-Entwürfe an — es wird nichts versendet.
+              </p>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Actions */}
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-4 py-3">
+        <Button
+          type="button"
+          size="sm"
+          variant={data.status === "pursuing" ? "default" : "outline"}
+          disabled={pending}
+          onClick={follow}
+        >
+          تابع
+        </Button>
+        <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={ignore}>
+          اهمل
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setExpanded(true);
+            setShowEmail((v) => !v);
+          }}
+          aria-expanded={showEmail}
+        >
+          E-Mail generieren
+        </Button>
+      </div>
+      {error ? <p className="px-4 pb-3 text-xs text-status-red">{error}</p> : null}
+      {done ? <p className="px-4 pb-3 text-xs text-status-green">{done}</p> : null}
+    </div>
   );
 }
 
