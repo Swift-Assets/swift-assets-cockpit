@@ -25,6 +25,10 @@ export interface InsolvencyAdminRow {
   has_phone: boolean | null;
   has_address: boolean | null;
   has_firm: boolean | null;
+  /** Quality fields exist only after migration 0042 is applied (optional). */
+  quality_status?: string | null;
+  quality_reason?: string | null;
+  is_visible?: boolean | null;
 }
 
 export interface InsolvencyAdminResult {
@@ -33,8 +37,11 @@ export interface InsolvencyAdminResult {
   total: number | null;
 }
 
-const COLUMNS =
+const BASE_COLUMNS =
   "administrator_id, display_name, firm, email, phone, address, city, postal_code, source_count, first_seen_at, last_seen_at, latest_cases_count, has_email, has_phone, has_address, has_firm";
+// Quality columns exist only after migration 0042 (PHASE 0050B). We try them
+// first and transparently fall back to BASE_COLUMNS if the view doesn't have them.
+const FULL_COLUMNS = `${BASE_COLUMNS}, quality_status, quality_reason, is_visible`;
 
 const LIMIT = 100;
 
@@ -48,38 +55,46 @@ export async function getInsolvencyAdministrators(
   rawQuery?: string,
   limit: number = LIMIT,
 ): Promise<InsolvencyAdminResult> {
-  try {
-    const supabase = await createClient();
-    let query = supabase
-      .from("v_cockpit_insolvency_administrators_internal")
-      .select(COLUMNS, { count: "exact" });
+  const q = rawQuery ? sanitizeSearchTerm(rawQuery) : "";
 
-    const q = rawQuery ? sanitizeSearchTerm(rawQuery) : "";
-    if (q.length >= 2) {
-      query = query.or(
-        [
-          `display_name.ilike.*${q}*`,
-          `firm.ilike.*${q}*`,
-          `email.ilike.*${q}*`,
-          `phone.ilike.*${q}*`,
-          `address.ilike.*${q}*`,
-          `city.ilike.*${q}*`,
-        ].join(","),
-      );
+  async function run(columns: string): Promise<InsolvencyAdminResult | "retry"> {
+    try {
+      const supabase = await createClient();
+      let query = supabase
+        .from("v_cockpit_insolvency_administrators_internal")
+        .select(columns, { count: "exact" });
+      if (q.length >= 2) {
+        query = query.or(
+          [
+            `display_name.ilike.*${q}*`,
+            `firm.ilike.*${q}*`,
+            `email.ilike.*${q}*`,
+            `phone.ilike.*${q}*`,
+            `address.ilike.*${q}*`,
+            `city.ilike.*${q}*`,
+          ].join(","),
+        );
+      }
+      const { data, error, count } = await query
+        .order("source_count", { ascending: false, nullsFirst: false })
+        .order("last_seen_at", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (error) return "retry";
+      return {
+        available: true,
+        rows: (data ?? []) as unknown as InsolvencyAdminRow[],
+        total: typeof count === "number" ? count : null,
+      };
+    } catch {
+      return "retry";
     }
-
-    const { data, error, count } = await query
-      .order("source_count", { ascending: false, nullsFirst: false })
-      .order("last_seen_at", { ascending: false, nullsFirst: false })
-      .limit(limit);
-
-    if (error) return { available: false, rows: [], total: null };
-    return {
-      available: true,
-      rows: (data ?? []) as InsolvencyAdminRow[],
-      total: typeof count === "number" ? count : null,
-    };
-  } catch {
-    return { available: false, rows: [], total: null };
   }
+
+  // Prefer the quality columns (post-0042); fall back to the base set so the
+  // page keeps working before the migration is applied.
+  const full = await run(FULL_COLUMNS);
+  if (full !== "retry") return full;
+  const base = await run(BASE_COLUMNS);
+  if (base !== "retry") return base;
+  return { available: false, rows: [], total: null };
 }

@@ -325,8 +325,8 @@ export default async function DashboardPage({
             />
           ) : admins.rows.length === 0 ? (
             <EmptyState
-              title="Keine Insolvenzverwalter gefunden"
-              description="Noch keine Daten oder keine Treffer für diese Suche."
+              title="Keine sichtbaren Insolvenzverwalter gefunden."
+              description="Noch keine Daten, keine Treffer, oder alle Treffer sind als ungültig markiert."
             />
           ) : (
             <div className="cockpit-scroll overflow-x-auto">
@@ -338,6 +338,7 @@ export default async function DashboardPage({
                     <th className="py-2 pr-3 font-medium">E-Mail</th>
                     <th className="py-2 pr-3 font-medium">Telefon</th>
                     <th className="py-2 pr-3 font-medium">Ort</th>
+                    <th className="py-2 pr-3 font-medium">Qualität</th>
                     <th className="py-2 pr-3 text-right font-medium">Fälle</th>
                     <th className="py-2 text-right font-medium">Zuletzt</th>
                   </tr>
@@ -370,6 +371,23 @@ export default async function DashboardPage({
                       </td>
                       <td className="py-2 pr-3 text-muted-foreground">
                         {[a.postal_code, a.city].filter(Boolean).join(" ") || "—"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {a.quality_status ? (
+                          <Badge
+                            variant={
+                              a.quality_status === "valid"
+                                ? "green"
+                                : a.quality_status === "suspect"
+                                  ? "yellow"
+                                  : "muted"
+                            }
+                          >
+                            {a.quality_status}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-right tabular-nums">{a.source_count ?? 0}</td>
                       <td className="py-2 text-right text-xs tabular-nums text-muted-foreground">
