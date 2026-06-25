@@ -88,6 +88,23 @@ function fmtDate(value: string | null): string {
   }
 }
 
+/** Human-readable German label for a data-quality "Lücken" flag (UI display only). */
+const MISSING_FLAG_LABELS: Record<string, string> = {
+  administrator_not_in_current_bekanntmachung:
+    "Insolvenzverwalter nicht in aktueller Bekanntmachung",
+  handelsregister_missing: "Handelsregister fehlt",
+  handelsregister_not_applicable: "Handelsregister nicht anwendbar",
+  no_administrator_name: "Insolvenzverwalter-Name fehlt",
+  no_administrator_email: "Insolvenzverwalter-E-Mail fehlt",
+  no_administrator_phone: "Insolvenzverwalter-Telefon fehlt",
+  no_court: "Gericht fehlt",
+  no_aktenzeichen: "Aktenzeichen fehlt",
+};
+
+function formatMissingDataFlag(flag: string): string {
+  return MISSING_FLAG_LABELS[flag] ?? flag;
+}
+
 const ACTIVITY_PLACEHOLDER = "نشاط الشركة غير معروف من البيانات المتاحة حاليًا.";
 
 function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
@@ -300,7 +317,11 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
               <Row label="Finanzdaten" value={data.financialDataStatus} />
               <Row
                 label="Lücken"
-                value={missingDataFlags.length > 0 ? missingDataFlags.join(", ") : null}
+                value={
+                  missingDataFlags.length > 0
+                    ? missingDataFlags.map(formatMissingDataFlag).join(", ")
+                    : null
+                }
               />
               <Row
                 label="Qualität"

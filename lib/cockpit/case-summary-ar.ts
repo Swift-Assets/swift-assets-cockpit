@@ -34,7 +34,7 @@ const PHASE_DE: Record<string, string> = {
 
 /** Short Arabic gloss per internal phase key. */
 const PHASE_AR: Record<string, string> = {
-  vorlaeufig: "مرحلة تمهيدية / تدبير قضائي مبكر ضمن Insolvenzverfahren (Anordnung / Sicherungsmaßnahme) قبل der Verteilung",
+  vorlaeufig: "مرحلة تمهيدية / تدبير قضائي مبكر ضمن Insolvenzverfahren (Anordnung / Sicherungsmaßnahme) قبل Verteilung",
   eroeffnung: "افتتاح إجراء الإعسار رسميًا",
   berichtstermin: "موعد تقديم تقرير مدير الإعسار",
   pruefungstermin: "موعد فحص الديون المُعلَنة",
@@ -79,7 +79,7 @@ export function describeAcquisitionRelevanceAr(event: {
   const pre =
     event.isPreVerteilung ??
     (event.insolvencyPhase ? PRE_VERTEILUNG.has(event.insolvencyPhase) : false);
-  if (pre) return "akquiserelevant — ضمن نافذة مبكرة قبل der Verteilung.";
+  if (pre) return "akquiserelevant — ضمن نافذة مبكرة قبل Verteilung.";
   if (event.insolvencyPhase && event.insolvencyPhase !== "unknown")
     return "monitor — مرحلة متأخرة/إجرائية، للمتابعة فقط.";
   return "غير مصنّف — يتطلب مراجعة يدوية.";
@@ -107,23 +107,23 @@ export function buildArabicTimelineEventSummary(event: CaseTimelineEvent): strin
   switch (phase) {
     case "vorlaeufig":
       return hasAdmin
-        ? "إجراء مبكر ضمن Insolvenzverfahren قبل der Verteilung، وتوجد بيانات منظمة لـ Insolvenzverwalter."
-        : "إجراء مبكر ضمن Insolvenzverfahren قبل der Verteilung. لا توجد في هذا الإعلان بيانات تعيين منظمة لـ Insolvenzverwalter.";
+        ? "إجراء مبكر قبل Verteilung مع بيانات منظمة عن Insolvenzverwalter."
+        : "إجراء مبكر قبل Verteilung؛ لا توجد بيانات تعيين منظمة لـ Insolvenzverwalter في هذا الإعلان.";
     case "pruefungstermin":
-      return "موعد فحص الديون المعلنة ضمن Insolvenzverfahren. لا يعني هذا الإعلان وحده وجود تعيين جديد لـ Insolvenzverwalter.";
+      return "موعد فحص الديون؛ لا يعني وحده تعيين Insolvenzverwalter جديد.";
     case "berichtstermin":
-      return "موعد تقديم تقرير ضمن Insolvenzverfahren قبل der Verteilung.";
+      return "موعد تقديم تقرير قبل Verteilung.";
     case "eroeffnung":
       return hasAdmin
-        ? "Eröffnung des Insolvenzverfahrens مع بيانات منظمة عن Insolvenzverwalter."
-        : "Eröffnung des Insolvenzverfahrens. لا تظهر في هذا الإعلان بيانات منظمة لـ Insolvenzverwalter.";
+        ? "Eröffnung des Insolvenzverfahrens مع بيانات Insolvenzverwalter منظمة."
+        : "Eröffnung des Insolvenzverfahrens؛ لا تظهر بيانات منظمة لـ Insolvenzverwalter.";
     case "verwertung":
-      return "مرحلة تسييل/بيع أصول الكتلة ضمن Insolvenzverfahren.";
+      return "مرحلة تسييل/بيع أصول الكتلة.";
     case null:
     case "unknown":
-      return "إجراء ضمن Insolvenzverfahren غير مصنّف بدقة — يلزم فحص يدوي.";
+      return "إجراء غير مصنّف بدقة — يلزم فحص يدوي.";
     default:
-      return "مرحلة إجرائية/متأخرة غالبًا للمتابعة فقط، وليست أولوية استحواذ إلا إذا ظهرت معلومات أصول مهمة.";
+      return "مرحلة متأخرة/إجرائية للمتابعة فقط غالبًا.";
   }
 }
 
@@ -176,7 +176,7 @@ export function buildArabicCaseSummary(
   if (!input.court && !input.aktenzeichen)
     riskFlagsAr.push("لا يوجد مرجع قضية (محكمة/رقم ملف).");
   if (input.hasAdministratorEmail === false)
-    riskFlagsAr.push("لا يوجد E-Mail منظم للـ Insolvenzverwalter — تواصل محدود.");
+    riskFlagsAr.push("لا يوجد E-Mail منظم للـ Insolvenzverwalter.");
 
   if (!latest && (phase === null || phase === undefined)) {
     return {
@@ -197,7 +197,7 @@ export function buildArabicCaseSummary(
 
   if (pre === true) {
     statusAr = `الطور الحالي: ${phaseDe} — ${phaseAr}.`;
-    relevanceAr = "التقييم: akquiserelevant — الحالة ما تزال ضمن نافذة مبكرة قبل der Verteilung وقد تكون مهمة عمليًا.";
+    relevanceAr = "التقييم: akquiserelevant — الحالة ما تزال ضمن نافذة مبكرة قبل Verteilung وقد تكون مهمة عمليًا.";
     nextActionAr = "يُنصح بالمراجعة والتواصل مع الـ Insolvenzverwalter لتقييم الأصول.";
   } else if (phase === "unknown" || phase === null) {
     statusAr = "الطور غير مصنّف بدقة من البيانات المتاحة.";
@@ -285,42 +285,49 @@ export function buildArabicInsolvencyCaseSummary(
   input: InsolvencyCaseSummaryInput,
 ): string {
   const phase = input.latestPhase;
-  const typeDe = describeAnnouncementTypeDe(phase, input.latestAnnouncementType);
+  // Prefer the actual Bekanntmachung type hint (e.g. "Anordnung") for the label.
+  const typeLabel =
+    input.latestAnnouncementType?.trim() ||
+    describeAnnouncementTypeDe(phase, input.latestAnnouncementType);
   const date = fmtDateDe(input.latestPublicationDate);
-  const pre =
-    input.preVerteilung ?? (phase ? PRE_VERTEILUNG.has(phase) : null);
+  const pre = input.preVerteilung ?? (phase ? PRE_VERTEILUNG.has(phase) : null);
 
-  // Sentence 1 — what / when / where.
   const where = [
     date ? `بتاريخ ${date}` : null,
     input.court ? `أمام ${input.court}` : null,
   ]
     .filter(Boolean)
     .join(" ");
-  const s1 = `هذه Bekanntmachung من نوع ${typeDe}${where ? " " + where : ""}.`;
+  const whereSuffix = where ? " " + where : "";
 
-  // Sentence 2 — what the phase means (per bucket).
-  const phaseAr = describePhaseAr(phase);
-  let s2: string;
+  // Late-stage / monitor — keep it very short.
+  if (pre === false && phase && phase !== "unknown") {
+    return "هذه Bekanntmachung تبدو مرحلة متأخرة أو إجرائية. غالبًا تُعامل كـ Monitor وليست أولوية إلا إذا ظهرت معلومات أصول مهمة.";
+  }
+
+  // Unknown phase.
   if (phase === "unknown" || phase === null) {
-    s2 = "الطور غير مصنّف بدقة من البيانات المتاحة، وهذا إجراء ضمن مسار Insolvenzverfahren وليس وصفًا لنشاط الشركة.";
-  } else {
-    s2 = `${phaseAr} — وهو إجراء ضمن مسار Insolvenzverfahren وليس وصفًا لنشاط الشركة.`;
+    return `هذه Bekanntmachung${typeLabel ? " من نوع " + typeLabel : ""}${whereSuffix}. الطور غير مصنّف بدقة، ويلزم فحص يدوي قبل أي إجراء.`;
   }
 
-  // Sentence 3 — relevance + admin presence + recommended action.
-  let s3: string;
-  if (pre === true) {
-    s3 = input.hasAdministrator
-      ? "الحالة ما زالت قبل der Verteilung (akquiserelevant)، وتوجد بيانات منظمة عن Insolvenzverwalter — يمكن مراجعة التواصل معه عند وجود سبب استحواذ واضح."
-      : "الحالة ما زالت قبل der Verteilung (akquiserelevant). لا تظهر بيانات منظمة عن Insolvenzverwalter في هذه Bekanntmachung، وهذا قد يكون صحيحًا إذا كان النوع مثل Anordnung أو Prüfungstermin ولا يحتوي كتلة تعيين.";
-  } else if (phase === "unknown" || phase === null) {
-    s3 = "يلزم فحص يدوي لتحديد الطور والملاءمة قبل أي إجراء.";
-  } else {
-    s3 = "تُصنّف غالبًا كـ monitor (مرحلة متأخرة/إجرائية) وليست أولوية إلا إذا ظهرت معلومات أصول مهمة.";
+  // Eröffnung — appointment is normal here, but stay admin-conditional.
+  if (phase === "eroeffnung") {
+    const base = "هذه Bekanntmachung تعلن Eröffnung des Insolvenzverfahrens.";
+    return input.hasAdministrator
+      ? `${base} توجد بيانات منظمة عن Insolvenzverwalter، لذلك يمكن مراجعة التواصل عند وجود سبب استحواذ واضح.`
+      : `${base} لا تظهر بيانات منظمة عن Insolvenzverwalter في السجل الحالي، لذلك يلزم فحص مصدر البيانات قبل التواصل.`;
   }
 
-  return [s1, s2, s3].join(" ");
+  // Prüfungstermin — debt-review appointment, not an administrator appointment.
+  if (phase === "pruefungstermin") {
+    return `هذه Bekanntmachung من نوع Prüfungstermin${whereSuffix}. هذا موعد لفحص الديون ضمن Insolvenzverfahren، ولا يعني وحده وجود تعيين جديد لـ Insolvenzverwalter.`;
+  }
+
+  // Other early / pre-Verteilung (Anordnung/Vorläufig, Berichtstermin, Verwertung).
+  const s1 = `هذه Bekanntmachung من نوع ${typeLabel}${whereSuffix}.`;
+  return input.hasAdministrator
+    ? `${s1} الحالة في مرحلة مبكرة قبل Verteilung، وتوجد بيانات منظمة عن Insolvenzverwalter.`
+    : `${s1} الحالة في مرحلة مبكرة قبل Verteilung، ولا يذكر الإعلان الحالي بيانات تعيين منظمة لـ Insolvenzverwalter.`;
 }
 
 const ADMIN_MISSING_FLAGS = new Set([
