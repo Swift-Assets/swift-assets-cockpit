@@ -14,10 +14,14 @@
 >   the `nachlass_detector` Edge Function, and the `nachlass_authorized` profile
 >   flag are gone. The Cockpit is **companies-only**. Sections marked
 >   **REMOVED — Nachlass** below are kept for history only.
-> - **AI case review & enrichment** — `v_cockpit_ai_case_reviews` and the
->   `generate-watchlist-ai-review` Edge Function plus its lifecycle RPCs are dead.
->   The enrichment/web-search/review-inbox views still exist but return **0 rows**;
->   the UI empty-states them and never calls the removed RPCs. Section **F** is
+> - **AI case review & enrichment** — the views `v_cockpit_ai_case_reviews`,
+>   `v_cockpit_company_activity`, `v_cockpit_enrichment_jobs`,
+>   `v_cockpit_company_web_search`, `v_cockpit_review_inbox` and
+>   `v_retention_purge_queue` were **dropped in production** (forward-only
+>   teardown migration), along with the AI case-review / publication-review /
+>   evaluation function sets. The `generate-watchlist-ai-review` Edge Function was
+>   deleted. All matching frontend code (company-activity card, enrichment KPI
+>   card, AI-review screens) has been removed. Section **F** is
 >   **REMOVED — AI review**.
 >
 > **Golden rules (apply to every module):**
@@ -169,10 +173,10 @@
 | Item | Value |
 |---|---|
 | Query helpers | `lib/cockpit/operations.queries.ts` *(the old `lib/cockpit/dashboard.queries.ts` was deleted)* |
-| Views in use | `v_cockpit_system_health`, `v_cockpit_data_coverage_summary`, `v_daily_run_log`, `v_cockpit_companies`, `v_public_insolvency_statistics`. **Note:** `v_cockpit_enrichment_jobs` and `v_cockpit_review_inbox` still exist but now return **0 rows** (AI/enrichment removed); the operations cards read them fail-safe and render an empty/zero state — never an error, never a removed RPC. |
+| Views in use | `v_cockpit_system_health`, `v_cockpit_data_coverage_summary`, `v_daily_run_log`, `v_cockpit_companies`, `v_public_insolvency_statistics`. **Note:** `v_cockpit_enrichment_jobs` and `v_cockpit_review_inbox` were **dropped**; the "AI / Enrichment Jobs" operations card and its query were removed. Remaining cards (ingestion, recent runs, GitHub, system health) are unaffected. |
 | Readiness | System-health + data-coverage cards **Ready** for the dashboard. |
 | UI PHASE 1 should show | Dashboard summary cards (coverage + health), read-only. |
-| Deferred | Full System Operations Inbox / review-inbox triage UI, daily-run-log drill-down → later phase (read views exist but UI is out of scope for PHASE 1). |
+| Deferred | Daily-run-log drill-down → later phase (read views exist but UI is out of scope for PHASE 1). |
 
 ---
 

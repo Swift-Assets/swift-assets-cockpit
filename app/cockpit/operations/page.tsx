@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * Read-only Operations Center MVP (Phase 6B).
  *
  * Live cards are sourced only from existing safe, RLS-gated views
- * (v_cockpit_enrichment_jobs, v_daily_run_log) and read aggregates/timestamps
+ * (v_daily_run_log, v_cockpit_system_health) and read aggregates/timestamps
  * only — no company names, error payloads, or PII. Modules without a safe data
  * source render an explicit placeholder. No writes, no secrets.
  */
@@ -42,7 +42,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 export default async function OperationsPage() {
-  const [{ enrichment, ingestion, recentEvents, github }, systemHealth, tasksResult] =
+  const [{ ingestion, recentEvents, github }, systemHealth, tasksResult] =
     await Promise.all([getOperationsData(), getSystemHealth(), getMyTasks()]);
   const openTaskKeys = openTaskContextKeys(tasksResult.rows);
 
@@ -87,32 +87,7 @@ export default async function OperationsPage() {
           ) : null}
         </DashboardCard>
 
-        {/* 2. AI / Enrichment Jobs — live (v_cockpit_enrichment_jobs) */}
-        <DashboardCard
-          title="AI / Enrichment Jobs"
-          status={enrichment.status}
-          value={enrichment.available ? enrichment.total : "—"}
-          description={
-            enrichment.available
-              ? "Job-Warteschlange (Aggregat aus v_cockpit_enrichment_jobs)."
-              : "Noch nicht verbunden."
-          }
-        >
-          {enrichment.available ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-              <Metric label="Offen" value={enrichment.pending} />
-              <Metric label="Laufend" value={enrichment.running} />
-              <Metric label="Erledigt" value={enrichment.succeeded} />
-              <Metric
-                label="Fehlgeschlagen"
-                value={enrichment.failed}
-                emphasize={enrichment.failed > 0}
-              />
-            </dl>
-          ) : null}
-        </DashboardCard>
-
-        {/* 3. Recent operations events — live (v_daily_run_log) */}
+        {/* 2. Recent operations events — live (v_daily_run_log) */}
         <DashboardCard
           title="Letzte Läufe"
           status={recentEvents.available ? "green" : "gray"}
@@ -169,7 +144,7 @@ export default async function OperationsPage() {
           ) : null}
         </DashboardCard>
 
-        {/* 4. GitHub Actions — live if a safe run URL exists */}
+        {/* 3. GitHub Actions — live if a safe run URL exists */}
         <DashboardCard
           title="GitHub Actions"
           status={github.available ? github.status : "gray"}
@@ -203,7 +178,7 @@ export default async function OperationsPage() {
           ) : null}
         </DashboardCard>
 
-        {/* 5. Datenbank / Supabase — live once migration 0024 is applied */}
+        {/* 4. Datenbank / Supabase — live once migration 0024 is applied */}
         <DashboardCard
           title="Datenbank / Supabase"
           status={systemHealth.available ? systemHealth.status : "gray"}
@@ -223,7 +198,7 @@ export default async function OperationsPage() {
           ) : null}
         </DashboardCard>
 
-        {/* 6–7. Placeholders — no safe source yet */}
+        {/* 5–6. Placeholders — no safe source yet */}
         <DashboardCard
           title="Public Portal Health"
           status="gray"

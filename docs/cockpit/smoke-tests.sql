@@ -11,24 +11,21 @@
 
 -- -----------------------------------------------------------------------------
 -- A. Migration records — confirm the key migrations are applied.
---    Expect one row per name (6 rows).
 -- -----------------------------------------------------------------------------
 select name
 from supabase_migrations.schema_migrations
 where name in (
     'swift_v2_0028_cockpit_watchlist_internal_outreach', -- watchlist + outreach
     'swift_v2_0026_cockpit_tasks',                        -- tasks
-    'swift_v2_0029_cockpit_ai_case_reviews',             -- AI review
-    'swift_v2_0030_cockpit_ai_outreach_drafts',          -- AI outreach
-    'swift_v2_0031_lock_down_nachlass_review_views'      -- Nachlass lock-down
+    'swift_v2_0030_cockpit_ai_outreach_drafts'           -- AI outreach
 )
 order by name;
 
 -- -----------------------------------------------------------------------------
 -- B. Cockpit object counts (tables / views / functions).
 --    Edge Functions CANNOT be checked via SQL — verify in the Supabase
---    dashboard / MCP: generate-watchlist-ai-review, generate-outreach-email-draft
---    (both must be ACTIVE with verify_jwt = true).
+--    dashboard / MCP: generate-outreach-email-draft
+--    (must be ACTIVE with verify_jwt = true).
 -- -----------------------------------------------------------------------------
 select
   (select count(*) from information_schema.tables
@@ -51,16 +48,9 @@ where n.nspname='swift_v2'
     'cockpit_company_watchlist','cockpit_nachlass_watchlist',
     'cockpit_tasks','cockpit_task_events',
     'cockpit_outreach_drafts','cockpit_outreach_events',
-    'cockpit_ai_case_reviews','cockpit_ai_case_review_events',
     'cockpit_user_profiles'
   )
 order by c.relname;
-
--- C2. v_cockpit_ai_case_reviews must NOT expose source_snapshot (expect 0).
-select count(*) as ai_review_source_snapshot_exposed
-from information_schema.columns
-where table_schema='swift_v2' and table_name='v_cockpit_ai_case_reviews'
-  and column_name='source_snapshot';
 
 -- C3. v_cockpit_outreach_drafts must NOT expose metadata or source_snapshot
 --     (expect 0), but MUST expose generation_mode + ai_model_name (expect 2).
@@ -101,10 +91,7 @@ where n.nspname='swift_v2'
   and p.proname in (
     'cockpit_get_outreach_ai_snapshot',
     'cockpit_has_active_outreach_draft',
-    'cockpit_store_ai_outreach_draft',
-    'cockpit_create_ai_case_review_request',
-    'cockpit_store_ai_case_review_result',
-    'cockpit_fail_ai_case_review'
+    'cockpit_store_ai_outreach_draft'
   )
 order by p.proname;
 -- Interpretation: every row should be security_definer=t, search_path_pinned=t,
@@ -117,8 +104,7 @@ select
   (select count(*) from swift_v2.cockpit_company_watchlist)  as company_watchlist_rows,
   (select count(*) from swift_v2.cockpit_nachlass_watchlist) as nachlass_watchlist_rows,
   (select count(*) from swift_v2.cockpit_tasks)              as tasks,
-  (select count(*) from swift_v2.cockpit_outreach_drafts)    as outreach_drafts,
-  (select count(*) from swift_v2.cockpit_ai_case_reviews)    as ai_reviews;
+  (select count(*) from swift_v2.cockpit_outreach_drafts)    as outreach_drafts;
 
 -- -----------------------------------------------------------------------------
 -- F. Safety notes — what these tests CANNOT prove without a real session.
@@ -130,7 +116,7 @@ select
 --   * anon being denied SELECT on the Nachlass views: confirm via the REST/
 --     PostgREST layer with the anon key (or `set role anon;` in a session that
 --     allows it), not via this postgres-context script.
---   * Edge Functions (generate-watchlist-ai-review, generate-outreach-email-draft):
+--   * Edge Function generate-outreach-email-draft:
 --     status/verify_jwt and OPENAI_API_KEY presence are dashboard/MCP checks,
 --     not SQL.
 --   * No real AI generation should be triggered from here (no inserts/calls).
