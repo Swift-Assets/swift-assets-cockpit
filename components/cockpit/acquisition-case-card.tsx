@@ -10,7 +10,6 @@ import { buildOutreachPreview } from "@/lib/cockpit/email-template";
 import {
   updateStatusAction,
   watchCompanyAction,
-  watchNachlassAction,
 } from "@/app/cockpit/watchlist/actions";
 import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-drafts/actions";
 import { BekanntmachungTimeline } from "@/components/cockpit/bekanntmachung-timeline";
@@ -23,10 +22,10 @@ import {
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
-/** Normalized acquisition case (from a new lead OR a watched row). */
+/** Normalized acquisition case (company lead OR watched company). */
 export interface CaseCardData {
   key: string;
-  kind: "company" | "nachlass";
+  kind: "company";
   source: "lead" | "watch";
   entityId: string | null;
   watchId: string | null;
@@ -167,10 +166,8 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
   function changeStatus(target: "pursuing" | "passed", okMsg: string) {
     if (data.source === "watch" && data.subjectId) {
       run(() => updateStatusAction(data.kind, data.subjectId as string, target), okMsg);
-    } else if (data.source === "lead" && data.kind === "company" && data.entityId) {
+    } else if (data.source === "lead" && data.entityId) {
       run(() => watchCompanyAction(data.entityId as string, target, "", ""), okMsg);
-    } else if (data.source === "lead" && data.kind === "nachlass" && data.detectionId) {
-      run(() => watchNachlassAction(data.detectionId as string, target, "", ""), okMsg);
     } else {
       setError("Aktion nicht möglich: fehlende Fall-ID.");
     }
@@ -210,7 +207,7 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
       >
         <div className="flex items-center gap-1.5">
           <Badge variant={status.variant}>{status.label}</Badge>
-          <Badge variant="outline">{data.kind === "nachlass" ? "Nachlass" : "Firma"}</Badge>
+          <Badge variant="outline">Firma</Badge>
           {data.preVerteilung ? <Badge variant="green">pre-Verteilung</Badge> : null}
         </div>
         <h3 className="mt-3 line-clamp-2 text-[15px] font-semibold tracking-tight">

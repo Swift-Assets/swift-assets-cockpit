@@ -7,7 +7,6 @@ export interface CockpitProfile {
   email: string | null;
   role: CockpitRole;
   isActive: boolean;
-  nachlassAuthorized: boolean;
   displayName: string | null;
 }
 
@@ -26,13 +25,12 @@ export async function getCockpitProfile(): Promise<CockpitProfile | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Column names below are intentionally defensive: this PR does not assume the
-  // full profile shape beyond the documented fields (role, active flags,
-  // nachlass_authorized). If a column is absent the query simply errors and we
-  // fall back to a minimal viewer profile rather than leaking access.
+  // Read only the safe, still-present profile columns. If a column is absent the
+  // query errors and we fall back to a minimal viewer profile rather than leaking
+  // access. (The Nachlass feature was removed, so nachlass_authorized is gone.)
   const { data, error } = await supabase
     .from("cockpit_user_profiles")
-    .select("role, is_active, nachlass_authorized, display_name, email")
+    .select("role, is_active, display_name, email")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -42,7 +40,6 @@ export async function getCockpitProfile(): Promise<CockpitProfile | null> {
       email: user.email ?? null,
       role: "viewer",
       isActive: false,
-      nachlassAuthorized: false,
       displayName: user.email ?? null,
     };
   }
@@ -52,7 +49,6 @@ export async function getCockpitProfile(): Promise<CockpitProfile | null> {
     email: (data.email as string | null) ?? user.email ?? null,
     role: (data.role as CockpitRole) ?? "viewer",
     isActive: Boolean(data.is_active),
-    nachlassAuthorized: Boolean(data.nachlass_authorized),
     displayName: (data.display_name as string | null) ?? user.email ?? null,
   };
 }

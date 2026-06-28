@@ -24,11 +24,6 @@ export function CockpitTopbar({ profile }: { profile: CockpitProfile }) {
         <Badge variant="outline" className="border-white/30 capitalize text-nav">
           {profile.role}
         </Badge>
-        {profile.nachlassAuthorized ? (
-          <Badge variant="outline" className="border-white/30 text-nav">
-            Nachlass
-          </Badge>
-        ) : null}
 
         <div className="flex items-center gap-2 border-l border-ink-soft pl-4">
           <span

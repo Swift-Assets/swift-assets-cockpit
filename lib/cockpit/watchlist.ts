@@ -1,16 +1,11 @@
-export type WatchKind = "company" | "nachlass";
+// Companies only — the Nachlass feature was removed from the backend.
+export type WatchKind = "company";
 export type WatchStatus = "watching" | "pursuing" | "passed";
 
 /**
  * A row of swift_v2.v_cockpit_my_watchlist, limited to the non-sensitive
- * columns this UI is allowed to render.
- *
- * Row → RPC key mapping (confirmed from the view + RPC definitions):
- *  - company  : subject_id  == entity_id    (used as p_subject_id / p_entity_id)
- *  - nachlass : detection_id                (used as p_subject_id / p_detection_id)
- *
- * Sensitive Nachlass fields (nachlass_score, estate_summary_ar,
- * estate_asset_categories) are intentionally NOT selected or exposed here.
+ * columns this UI is allowed to render. Company rows only: subject_id == the
+ * portal_entities.id used as p_subject_id / p_entity_id by the write RPCs.
  */
 export interface WatchlistRow {
   kind: WatchKind;
@@ -40,13 +35,11 @@ export function statusLabel(status: string | null): string {
   return STATUS_OPTIONS.find((o) => o.value === status)?.label ?? "—";
 }
 
-/** The identifier the write RPCs expect for this row. */
+/** The identifier the write RPCs expect for this (company) row. */
 export function rpcSubjectId(row: {
-  kind: WatchKind;
   subject_id: string | null;
-  detection_id: string | null;
 }): string | null {
-  return row.kind === "company" ? row.subject_id : row.detection_id;
+  return row.subject_id;
 }
 
 /** Columns selected from the view — non-sensitive only. */

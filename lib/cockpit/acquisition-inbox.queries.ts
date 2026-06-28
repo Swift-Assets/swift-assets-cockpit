@@ -4,12 +4,12 @@ import type { Gate } from "@/lib/cockpit/acquisition-relevance";
 /**
  * One row of swift_v2.v_cockpit_acquisition_inbox (PROPOSED — migration 0034,
  * repo-only / not yet applied). Safe internal fields only; no raw text/raw_json/
- * source_snapshot. Nachlass person_name is internal-only (Cockpit), never public.
+ * source_snapshot. Companies only.
  */
 export interface AcquisitionInboxRow {
   case_key: string;
-  kind: "company" | "nachlass";
-  source: "new_company" | "new_nachlass" | "watchlist";
+  kind: "company";
+  source: "new_company" | "watchlist";
   source_id: string | null;
   entity_id: string | null;
   detection_id: string | null;
@@ -19,8 +19,6 @@ export interface AcquisitionInboxRow {
   inbox_status: "neu" | "watching" | "pursuing" | "passed";
   display_title: string | null;
   safe_display_label: string | null;
-  person_name: string | null;
-  birth_date: string | null;
   city: string | null;
   bundesland: string | null;
   court: string | null;
@@ -64,7 +62,6 @@ export interface AcquisitionInboxResult {
  *                  (late-stage / low-value / Unbekannt).
  *  - watchlist   : actively followed cases (watching / pursuing).
  *  - ignored     : passed/ignored cases.
- *  - nachlass    : Nachlass cases only.
  *  - all         : no extra filter.
  */
 interface GateFilterable {
@@ -90,8 +87,6 @@ function applyGateFilter<T extends GateFilterable>(query: T, gate: Gate): T {
         .in("inbox_status", ["watching", "pursuing"]);
     case "ignored":
       return query.eq("inbox_status", "passed");
-    case "nachlass":
-      return query.eq("kind", "nachlass");
     case "all":
     default:
       return query;
@@ -99,7 +94,7 @@ function applyGateFilter<T extends GateFilterable>(query: T, gate: Gate): T {
 }
 
 const COLUMNS =
-  "case_key, kind, source, source_id, entity_id, detection_id, watch_id, is_watched, watch_status, inbox_status, display_title, safe_display_label, person_name, birth_date, city, bundesland, court, aktenzeichen, latest_publication_date, latest_announcement_type, latest_phase, phase_priority, pre_verteilung_relevance, administrator_name, administrator_email, administrator_phone, administrator_address, handelsregister_status, bundesanzeiger_status, financial_data_status, source_quality_flags, missing_data_flags, outreach_ready, outreach_blocked_reason, created_at, updated_at";
+  "case_key, kind, source, source_id, entity_id, detection_id, watch_id, is_watched, watch_status, inbox_status, display_title, safe_display_label, city, bundesland, court, aktenzeichen, latest_publication_date, latest_announcement_type, latest_phase, phase_priority, pre_verteilung_relevance, administrator_name, administrator_email, administrator_phone, administrator_address, handelsregister_status, bundesanzeiger_status, financial_data_status, source_quality_flags, missing_data_flags, outreach_ready, outreach_blocked_reason, created_at, updated_at";
 
 const DEFAULT_LIMIT = 240;
 const MIN_LIMIT = 24;

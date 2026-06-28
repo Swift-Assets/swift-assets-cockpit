@@ -46,16 +46,6 @@ export default async function SettingsPage() {
                 <Badge variant="outline">{profile?.role ?? "—"}</Badge>
               </dd>
             </div>
-            <div>
-              <dt className="text-muted-foreground">Nachlass-Berechtigung</dt>
-              <dd>
-                {profile?.nachlassAuthorized ? (
-                  <Badge variant="green">aktiv</Badge>
-                ) : (
-                  <Badge variant="muted">inaktiv</Badge>
-                )}
-              </dd>
-            </div>
           </dl>
         </CardContent>
       </Card>

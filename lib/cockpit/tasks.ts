@@ -32,7 +32,6 @@ export type TaskStatus =
 
 export type TaskRelatedKind =
   | "company"
-  | "nachlass"
   | "watchlist"
   | "entity"
   | "system"
@@ -71,7 +70,6 @@ export const TASK_STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 
 export const RELATED_KIND_OPTIONS: { value: TaskRelatedKind; label: string }[] = [
   { value: "company", label: "Firma" },
-  { value: "nachlass", label: "Nachlass" },
   { value: "watchlist", label: "Watchlist" },
   { value: "entity", label: "Entität" },
   { value: "system", label: "System" },

@@ -6,6 +6,20 @@
 > that must never be exposed. Names here are verified against the live code and
 > applied migrations (`swift_v2` schema, project `hqyktreytsjeirlpnnyr`).
 >
+> **⚠️ REMOVED FEATURES (backend cleanup, 2026-06).** Two feature areas were
+> permanently removed from the backend and the frontend:
+> - **Nachlass / natural-person estate cases** — all tables, views
+>   (`v_cockpit_nachlass_*`, `v_neu_natural_person_active`, …), RPCs
+>   (`cockpit_watch_nachlass`, `*_nachlass_review`, `fn_cockpit_nachlass_act`, …),
+>   the `nachlass_detector` Edge Function, and the `nachlass_authorized` profile
+>   flag are gone. The Cockpit is **companies-only**. Sections marked
+>   **REMOVED — Nachlass** below are kept for history only.
+> - **AI case review & enrichment** — `v_cockpit_ai_case_reviews` and the
+>   `generate-watchlist-ai-review` Edge Function plus its lifecycle RPCs are dead.
+>   The enrichment/web-search/review-inbox views still exist but return **0 rows**;
+>   the UI empty-states them and never calls the removed RPCs. Section **F** is
+>   **REMOVED — AI review**.
+>
 > **Golden rules (apply to every module):**
 > - Frontend talks to the DB only through the `@supabase/ssr` clients
 >   (`lib/supabase/client.ts`, `lib/supabase/server.ts`) under the user's RLS.
@@ -28,10 +42,10 @@
 | Self-read | `lib/cockpit/profile.ts → getCockpitProfile()` reads the caller's own profile (RLS self-read: `user_id = auth.uid()`). |
 | Roles | `role ∈ {viewer, analyst, lead, admin}` (USER-DEFINED enum). Read-only contexts allow any active role (`_cockpit_active_role()`); **writes require analyst/lead/admin** (`_cockpit_writer_role()` → raises `insufficient_role`). |
 | Admin | `admin` is the highest writer role. Admin-only management UI is **deferred** (section J). |
-| `nachlass_authorized` | Boolean on `cockpit_user_profiles`. Required for ANY Nachlass row/data (watchlist Nachlass rows, Nachlass drafts, Nachlass review views, Nachlass AI snapshot). |
+| `nachlass_authorized` | **REMOVED — Nachlass.** This profile flag no longer exists; `getCockpitProfile()` does not select it. No Nachlass data exists anywhere. |
 | Auth method | Supabase Auth **Magic Link** only. **No public signup.** Middleware (`middleware.ts`) gates `/cockpit/*`; unauthenticated → `/login`. |
 | service_role | **Never** in frontend. Edge Functions use the **caller's JWT + anon key**, not service_role. |
-| Missing access UX | If no active profile → show "Kein aktiver Cockpit-Zugang." If not `nachlass_authorized` → Nachlass rows simply do not appear (views return 0 rows); UI shows nothing Nachlass-specific, never an error that leaks existence. Writer-role failures → "Keine Berechtigung." |
+| Missing access UX | If no active profile → show "Kein aktiver Cockpit-Zugang." Writer-role failures → "Keine Berechtigung." |
 
 ---
 
@@ -39,8 +53,8 @@
 
 | Item | Value |
 |---|---|
-| Allowed views | `v_cockpit_system_health`, `v_cockpit_data_coverage_summary` |
-| Query helper | `lib/cockpit/dashboard.queries.ts` |
+| Allowed views | `v_cockpit_system_health`, `v_cockpit_data_coverage_summary`, `v_cockpit_dashboard_search_internal`, `v_cockpit_acquisition_inbox`, `v_cockpit_watchlist_internal`, `v_cockpit_insolvency_administrators_internal` |
+| Query helpers | `lib/cockpit/operations.queries.ts` (health), `lib/cockpit/acquisition.queries.ts` (leads), `lib/cockpit/watchlist-internal.queries.ts`, `lib/cockpit/dashboard-search.queries.ts`, `lib/cockpit/insolvency-administrators.queries.ts`. *(The old `lib/cockpit/dashboard.queries.ts` was deleted — it had no importers.)* |
 | Allowed RPCs | none (read-only views) |
 | Components | `components/cockpit/dashboard-card.tsx`, `system-health-list.tsx`, `status-badge.tsx` |
 | Fields (coverage) | safe aggregates only — counts/rates/timestamps/status labels (e.g. `entities_*`, `announcements_*`, `natural_person_normal_sensitivity`, `company_public_eligible`). |
@@ -56,14 +70,14 @@
 |---|---|
 | Allowed views | `v_cockpit_watchlist_internal` (enriched acquisition view, primary), `v_cockpit_my_watchlist` (basic fallback) |
 | Query helpers | `lib/cockpit/watchlist-internal.queries.ts`, `lib/cockpit/watchlist.queries.ts`; client-safe constants in `lib/cockpit/watchlist.ts` |
-| Server actions | `app/cockpit/watchlist/actions.ts`: `watchCompanyAction`, `watchNachlassAction`, `removeFromWatchlistAction`, `updateStatusAction`, `updateNoteAction`, `setFollowUpAction`, `clearFollowUpAction`, `searchCompaniesAction` |
-| Underlying RPCs | `cockpit_watch_company`, `cockpit_watch_nachlass`, `cockpit_unwatch_company`, `cockpit_unwatch_nachlass`, `cockpit_watchlist_update` |
-| Components | `watchlist-acquisition-filtered-table.tsx`, `watchlist-acquisition-row.tsx`, `watchlist-add-panel.tsx`, `watchlist-filtered-table.tsx`, `watchlist-row.tsx` |
-| Row key | `v_cockpit_watchlist_internal.subject_id` = the RPC subject (company `entity_id` / nachlass `detection_id`); `watch_id` keys outreach/draft context. |
+| Server actions | `app/cockpit/watchlist/actions.ts`: `watchCompanyAction`, `removeFromWatchlistAction`, `updateStatusAction`, `updateNoteAction`, `setFollowUpAction`, `clearFollowUpAction`, `searchCompaniesAction` *(companies only — `watchNachlassAction`/`searchNachlassAction` removed)* |
+| Underlying RPCs | `cockpit_watch_company`, `cockpit_unwatch_company`, `cockpit_watchlist_update` *(the `*_nachlass` RPCs were removed)* |
+| Components | `components/cockpit/acquisition-inbox.tsx`, `acquisition-case-card.tsx`, `watchlist-add-panel.tsx`. *(The legacy `watchlist-acquisition-filtered-table.tsx`, `watchlist-acquisition-row.tsx`, `watchlist-filtered-table.tsx`, `watchlist-row.tsx`, `watchlist-pipeline.tsx`, `risk-flag-badge.tsx` were deleted.)* |
+| Row key | `v_cockpit_watchlist_internal.subject_id` = the RPC subject (company `entity_id`); `watch_id` keys outreach/draft context. |
 | Statuses | `watching`, `pursuing`, `passed` (see `STATUS_OPTIONS`). Plus per-row: note, `next_follow_up_at`. |
 | Company behavior | Real `display_title` (company name), city/Bundesland, court/Aktenzeichen, administrator contact, HR status. |
-| Nachlass behavior | Only `safe_display_label` ("Nachlass · Az. …"); `display_title` is null. Rows appear **only** for `nachlass_authorized` users. |
-| Must NOT expose | raw announcement text, debtor/deceased name *(in the watchlist view itself)*, birth dates, private addresses, Bundesanzeiger figures (status label only: `retired`/`unavailable`). |
+| ~~Nachlass behavior~~ | **REMOVED — Nachlass.** The acquisition inbox / watchlist views no longer return any `kind = 'nachlass'` rows; all Nachlass branches/badges are gone. |
+| Must NOT expose | raw announcement text, private addresses, Bundesanzeiger figures (status label only: `retired`/`unavailable`). |
 | Readiness | **Ready** for UI PHASE 1. |
 
 ---
@@ -78,7 +92,7 @@
 | Underlying RPCs | `cockpit_create_task`, `cockpit_update_task`, `cockpit_complete_task`, `cockpit_reopen_task`, `cockpit_archive_task` |
 | Components | `task-create-form.tsx`, `task-row-actions.tsx`, `create-task-from-context-button.tsx` |
 | Statuses | `open`, `in_progress`, `waiting`, `done`, `archived`. Types incl. `follow_up`, `review`, `outreach`, … Priority `low/medium/high/urgent`. |
-| Context linking | `related_kind` + `related_id` (e.g. `company`/`nachlass`/`watchlist`) link a task to a watchlist subject. UI uses `hasOpenTaskForContext()` to avoid duplicate "Follow-up" tasks (button shows existing instead of creating). |
+| Context linking | `related_kind` + `related_id` (e.g. `company`/`watchlist`) link a task to a watchlist subject. UI uses `hasOpenTaskForContext()` to avoid duplicate "Follow-up" tasks (button shows existing instead of creating). |
 | Readiness | **Ready** for UI PHASE 1. |
 
 ---
@@ -100,20 +114,20 @@
 
 ---
 
-## F. AI Case Review Contract
+## F. AI Case Review Contract — **REMOVED — AI review**
 
-| Item | Value |
-|---|---|
-| Allowed view | `v_cockpit_ai_case_reviews` (EXCLUDES `source_snapshot`) |
-| Query helper | `lib/cockpit/ai-reviews.queries.ts` (`getAiCaseReviews`, `activeAiReviewByWatchKey`, `aiReviewKey`) |
-| Server action | `app/cockpit/ai-reviews/actions.ts → generateAiCaseReviewAction(kind, watchId)` — invokes the Edge Function only. |
-| Edge Function | `generate-watchlist-ai-review` (ACTIVE, `verify_jwt=true`) |
-| Lifecycle RPCs (Edge-only) | `cockpit_create_ai_case_review_request`, `cockpit_get_ai_case_review_source_snapshot`, `cockpit_store_ai_case_review_result`, `cockpit_fail_ai_case_review`, `cockpit_archive_ai_case_review`. **Frontend never calls these directly** — only the Edge Function does, under the user JWT. |
-| Component | `ai-review-section.tsx` |
-| Statuses | `pending`, `generated`, `failed`, `archived` |
-| Fields | `acquisition_score` (0–100), `priority` (low/medium/high/urgent), `confidence` (low/medium/high), `summary_de`, `summary_ar`, `reasoning_ar`, `risk_flags[]`, `recommended_next_action`, `model_provider`, `model_name`, timestamps. |
-| Must NOT expose | `source_snapshot` (not in the view at all), raw provider response, prompt internals. |
-| Readiness | UI **Ready** to display + trigger; real generation requires an authenticated session + watchlist row + provider key. |
+> This entire feature was removed in the 2026-06 backend cleanup. The view
+> `v_cockpit_ai_case_reviews` is empty/dead, the `generate-watchlist-ai-review`
+> Edge Function and its lifecycle RPCs
+> (`cockpit_create_ai_case_review_request`, `*_source_snapshot`, `*_result`,
+> `*_fail`, `*_archive`) no longer exist. The frontend pieces — query helper
+> `lib/cockpit/ai-reviews.queries.ts`, server action
+> `app/cockpit/ai-reviews/actions.ts → generateAiCaseReviewAction`, and the
+> `ai-review-section.tsx` component with its "KI-Review erstellen" buttons —
+> were **all deleted**. No replacement; do not re-introduce calls to these.
+>
+> Distinct, still-live AI feature: the **outreach email draft** generator
+> (Section G) remains the working "#1 tool".
 
 ---
 
@@ -125,8 +139,8 @@
 | Server action | `app/cockpit/outreach-ai/actions.ts → generateAiOutreachDraftAction(kind, watchId, replaceExisting?)` |
 | RPCs (Edge-only) | `cockpit_get_outreach_ai_snapshot`, `cockpit_has_active_outreach_draft` (preflight), `cockpit_store_ai_outreach_draft` |
 | Component | `ai-outreach-create-button.tsx` ("KI-E-Mail-Entwurf erstellen") |
-| Company behavior | Company name (`display_title`) + Aktenzeichen permitted in the email. |
-| Nachlass behavior | **Internal only; `nachlass_authorized` required.** Deceased **name** permitted for case identification (structured `debtor_name`). Deceased **birth date currently unavailable → always null** (no source column exists). **No private address, no city, no raw announcement text, no excerpt, no detection reasoning.** |
+| Company behavior | Company name (`display_title`) + Aktenzeichen permitted in the email. Companies only — `generateAiOutreachDraftAction` rejects any non-`company` kind. |
+| ~~Nachlass behavior~~ | **REMOVED — Nachlass.** No deceased/natural-person drafts exist. |
 | Preflight guard | If an active (non-archived) draft exists and `replace_existing` is not true, the function returns `active_draft_exists` **before** any AI call (token-saving). The store RPC keeps the authoritative duplicate guard. |
 | Overwrite | **No overwrite by default.** Replacement only with explicit `replace_existing = true` (archives prior active drafts, audited). |
 | Output | Saved as a normal `draft` (`generation_mode='ai'`); recipient derived server-side from the authoritative view (AI's recipient is **not** trusted). |
@@ -135,15 +149,18 @@
 
 ---
 
-## H. Nachlass Security Contract
+## H. Nachlass Security Contract — **REMOVED — Nachlass**
 
-| Item | Value |
-|---|---|
-| Views | `v_cockpit_nachlass_review_full`, `v_cockpit_nachlass_review_queue` (locked down in migration `0031`). |
-| Visibility | Rows visible **only** to active cockpit users with `nachlass_authorized = true` (WHERE EXISTS gate; anon/non-authorized = 0 rows). |
-| Sensitivity warning | `v_cockpit_nachlass_review_full` contains `deceased_name`, `deceased_city`, `source_excerpt`, `detection_reasoning_ar`, `announcement_text`, `source_url`, administrator contact — **internal review only**. |
-| Public portal | **Must never** use these views or any Nachlass natural-person data. |
-| UI PHASE 1 | These review views are **not** part of UI PHASE 1; a Nachlass review screen is a later, `nachlass_authorized`-gated phase. |
+> The entire Nachlass / natural-person estate feature was removed in the 2026-06
+> backend cleanup. The views (`v_cockpit_nachlass_review_full`,
+> `v_cockpit_nachlass_review_queue`, `v_cockpit_nachlass_search_internal`,
+> `v_neu_natural_person_active`, …), the underlying tables
+> (`nachlass_detection_results`, `nachlass_opportunity_reviews`,
+> `nachlass_review_history`, `natural_person_cases`,
+> `raw_insolvency_announcements`, `cockpit_nachlass_watchlist`), all `*_nachlass_*`
+> RPCs, and the `nachlass_detector` Edge Function no longer exist. No
+> natural-person / deceased data is stored or surfaced anywhere. The Cockpit is
+> **companies-only**.
 
 ---
 
@@ -151,8 +168,8 @@
 
 | Item | Value |
 |---|---|
-| Query helpers | `lib/cockpit/operations.queries.ts`, `lib/cockpit/dashboard.queries.ts` |
-| Views in use | `v_cockpit_system_health`, `v_cockpit_data_coverage_summary`, `v_cockpit_enrichment_jobs`, `v_cockpit_review_inbox`, `v_daily_run_log`, `v_cockpit_companies`, `v_public_insolvency_statistics` |
+| Query helpers | `lib/cockpit/operations.queries.ts` *(the old `lib/cockpit/dashboard.queries.ts` was deleted)* |
+| Views in use | `v_cockpit_system_health`, `v_cockpit_data_coverage_summary`, `v_daily_run_log`, `v_cockpit_companies`, `v_public_insolvency_statistics`. **Note:** `v_cockpit_enrichment_jobs` and `v_cockpit_review_inbox` still exist but now return **0 rows** (AI/enrichment removed); the operations cards read them fail-safe and render an empty/zero state — never an error, never a removed RPC. |
 | Readiness | System-health + data-coverage cards **Ready** for the dashboard. |
 | UI PHASE 1 should show | Dashboard summary cards (coverage + health), read-only. |
 | Deferred | Full System Operations Inbox / review-inbox triage UI, daily-run-log drill-down → later phase (read views exist but UI is out of scope for PHASE 1). |
@@ -166,6 +183,5 @@
 - System Operations Inbox (full triage implementation).
 - Calendar integration.
 - Broader audit-log viewer.
-- Admin role-management UI (assign roles / `nachlass_authorized`).
+- Admin role-management UI (assign roles).
 - Public portal launch / legal review (separate legacy app — never touched here).
-- Nachlass review-screen UI (gated; later phase).

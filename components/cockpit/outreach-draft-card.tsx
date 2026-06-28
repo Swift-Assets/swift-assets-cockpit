@@ -106,7 +106,7 @@ export function OutreachDraftCard({ draft }: { draft: OutreachDraft }) {
           </span>
         </CardTitle>
         <CardDescription>
-          {draft.watch_kind === "nachlass" ? "Nachlass" : "Firma"} · erstellt von{" "}
+          Firma · erstellt von{" "}
           {draft.created_by_name ?? "—"} · {formatDateTime(draft.created_at)} ·
           aktualisiert {draft.updated_by_name ? `${draft.updated_by_name}, ` : ""}
           {formatDateTime(draft.updated_at)} · {draft.event_count ?? 0} Ereignisse
