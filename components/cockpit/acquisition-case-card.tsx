@@ -15,10 +15,7 @@ import { createOutreachDraftFromWatchlistAction } from "@/app/cockpit/email-draf
 import { BekanntmachungTimeline } from "@/components/cockpit/bekanntmachung-timeline";
 import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
 import { chooseBestAdministratorContact } from "@/lib/cockpit/administrator-contact";
-import {
-  isMeaningfulCompanyActivitySummary,
-  softenMissingDataFlags,
-} from "@/lib/cockpit/case-summary-ar";
+import { softenMissingDataFlags } from "@/lib/cockpit/case-summary-ar";
 
 export type CaseStatus = "neu" | "watching" | "pursuing" | "passed";
 
@@ -51,8 +48,6 @@ export interface CaseCardData {
   missingDataFlags: string[];
   sourceQualityFlags: string[];
   status: CaseStatus;
-  /** Company business-activity description (Arabic) — shown on the card exterior. */
-  companyActivityAr: string | null;
   /** Bekanntmachung timeline events (company only; empty until view 0038 applied). */
   timeline: CaseTimelineEvent[];
   hasDraft: boolean;
@@ -104,8 +99,6 @@ function formatMissingDataFlag(flag: string): string {
   return MISSING_FLAG_LABELS[flag] ?? flag;
 }
 
-const ACTIVITY_PLACEHOLDER = "نشاط الشركة غير معروف من البيانات المتاحة حاليًا.";
-
 function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -136,13 +129,6 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
   const hasAdministrator = Boolean(
     adminContact.name || adminContact.email || adminContact.phone || adminContact.address,
   );
-  // Quality guard: only treat the enrichment text as a real activity description
-  // if it actually names a sector/activity (not an insolvency/registration blurb).
-  const activityText =
-    data.kind === "company" &&
-    isMeaningfulCompanyActivitySummary(data.companyActivityAr, data.title)
-      ? (data.companyActivityAr as string)
-      : null;
   // Soften "no_administrator_*" gaps for phases where an appointment is not
   // expected (Anordnung/Prüfungstermin/…); a hard gap only for Eröffnung.
   const missingDataFlags = softenMissingDataFlags(
@@ -222,15 +208,6 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
             {fmtDate(data.latestPublicationDate)}
           </span>
         </div>
-        {/* Card exterior summary: COMPANY ACTIVITY only ("what does this firm
-            do?"). Insolvency-status text is rejected by the quality guard and
-            replaced with a clear fallback. Nachlass shows no exterior text. */}
-        {data.kind === "company" ? (
-          <p dir="rtl" className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
-            <span className="font-medium text-foreground">الوصف: </span>
-            {activityText ?? ACTIVITY_PLACEHOLDER}
-          </p>
-        ) : null}
       </button>
 
       {/* Expand toggle */}
@@ -245,9 +222,7 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
       </button>
 
       {/* Inline expanded detail (replaces the old right-side drawer).
-          The company-activity paragraph is shown ONCE on the card exterior
-          (الوصف:) and intentionally NOT repeated here — the expanded view leads
-          with the insolvency case summary + timeline instead. */}
+          The expanded view leads with the insolvency case summary + timeline. */}
       {expanded ? (
         <div className="space-y-4 border-t border-border px-4 py-4">
           {/* Lead with the Arabic insolvency case summary + Bekanntmachung

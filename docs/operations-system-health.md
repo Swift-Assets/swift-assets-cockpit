@@ -22,7 +22,6 @@ absent.
 
 | check_key | group | source | safe output |
 |---|---|---|---|
-| `enrichment_backlog` | enrichment | `v_cockpit_enrichment_jobs` | dead_letter / pending / running counts |
 | `ingestion_freshness` | ingestion | `v_daily_run_log` | last run date, status, age in days |
 | `retention_backlog` | retention | `v_personal_data_retention_due` | overdue **count only** |
 | `cron_health` | cron | `cron.job_run_details` (optional) | failed-run count (24h); gray if inaccessible |
@@ -70,7 +69,6 @@ objects/arrays can never be dumped into the UI.
 ## Traffic-light rollup
 
 The card status is the worst of its checks: red > yellow > green > gray. Per check:
-- enrichment: dead_letter > 0 → yellow, else green
 - ingestion: latest run failed → red; stale (> 2 days) → yellow; else green; no runs → yellow
 - retention: overdue > 0 → yellow, else green
 - cron: failed runs in 24h → yellow; inaccessible → gray; else green

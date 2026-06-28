@@ -27,13 +27,9 @@ function inboxStatusToCard(s: AcquisitionInboxRow["inbox_status"]): CaseCardData
 function rowToCard(
   r: AcquisitionInboxRow,
   draftKeySet: Set<string>,
-  activityByEntityId: Record<string, string>,
   timelineByEntityId: Record<string, CaseTimelineEvent[]>,
 ): CaseCardData {
   const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
-  const companyActivityAr = r.entity_id
-    ? (activityByEntityId[r.entity_id] ?? null)
-    : null;
   const timeline = r.entity_id ? (timelineByEntityId[r.entity_id] ?? []) : [];
   return {
     key: r.case_key,
@@ -63,7 +59,6 @@ function rowToCard(
     missingDataFlags: r.missing_data_flags ?? [],
     sourceQualityFlags: r.source_quality_flags ?? [],
     status: inboxStatusToCard(r.inbox_status),
-    companyActivityAr,
     timeline,
     hasDraft: r.watch_id ? draftKeySet.has(watchKey) : false,
   };
@@ -97,7 +92,6 @@ const EMPTY_BY_GATE: Record<Gate, { title: string; description: string }> = {
 export function AcquisitionInbox({
   rows,
   draftKeys,
-  activityByEntityId,
   timelineByEntityId,
   gate,
   gateCounts,
@@ -107,7 +101,6 @@ export function AcquisitionInbox({
 }: {
   rows: AcquisitionInboxRow[];
   draftKeys: string[];
-  activityByEntityId: Record<string, string>;
   timelineByEntityId: Record<string, CaseTimelineEvent[]>;
   gate: Gate;
   gateCounts: Record<string, number | null>;
@@ -119,10 +112,8 @@ export function AcquisitionInbox({
   // paginates the render window.
   const cards = useMemo(() => {
     const draftKeySet = new Set(draftKeys);
-    return rows.map((r) =>
-      rowToCard(r, draftKeySet, activityByEntityId, timelineByEntityId),
-    );
-  }, [rows, draftKeys, activityByEntityId, timelineByEntityId]);
+    return rows.map((r) => rowToCard(r, draftKeySet, timelineByEntityId));
+  }, [rows, draftKeys, timelineByEntityId]);
 
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   useEffect(() => {

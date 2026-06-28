@@ -220,36 +220,6 @@ export function buildArabicCaseSummary(
   return { headlineAr, statusAr, relevanceAr, nextActionAr, riskFlagsAr };
 }
 
-/* ------------------------------------------------------------------ */
-/* PHASE 0048 — separate "company activity" from "insolvency case"      */
-/* ------------------------------------------------------------------ */
-
-/** Phrases signalling that a real business activity / sector is described. */
-const ACTIVITY_POSITIVE =
-  /(تعمل\s+في|تنشط\s+في|متخصص|في\s+مجال|في\s+قطاع|تقدّم|تقدم|تُقدّم|خدمات|منتجات|تجارة|صناعة|مطاعم|ضيافة|مخبوزات|مخبز|رعاية|بناء|نقل|عقار|tätig\s+(in|im)|Branche|Dienstleistung|Handel|Produkt|Gastronomie|Bäckerei)/i;
-
-/** Phrases signalling the text is NOT an activity description (insolvency/meta). */
-const ACTIVITY_UNKNOWN =
-  /(لم\s+يتم\s+تحديد\s+نشاط|لا\s+يمكن\s+تحديد\s+نشاط|نشاط[^.]{0,25}غير\s+(محدد|واضح|معروف)|غير\s+(محدد|واضح|معروف)[^.]{0,25}نشاط|لا\s+توجد\s+(معلومات|بيانات)[^.]{0,40}نشاط|nicht\s+klar\s+identifiziert|keine\s+(klaren|belastbaren)\s+(angaben|informationen)|activity\s+not\s+clearly|no\s+clear\s+information\s+about\s+(its\s+)?(business\s+)?activity)/i;
-
-/**
- * Display-time guard: is this Arabic text a MEANINGFUL company-activity summary
- * (answers "what does the firm do?") rather than an insolvency/registration/
- * no-data blurb? Pure heuristic over structured text — does NOT touch the DB.
- *
- * Meaningful = names a sector/activity AND is not dominated by an
- * "activity unknown" / pure-insolvency-status statement.
- */
-export function isMeaningfulCompanyActivitySummary(
-  text: string | null | undefined,
-  _companyName?: string | null,
-): boolean {
-  const t = text?.trim();
-  if (!t || t.length < 12) return false;
-  if (ACTIVITY_UNKNOWN.test(t)) return false;
-  return ACTIVITY_POSITIVE.test(t);
-}
-
 function fmtDateDe(value: string | null): string | null {
   if (!value) return null;
   try {

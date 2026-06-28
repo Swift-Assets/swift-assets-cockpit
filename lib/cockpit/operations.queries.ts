@@ -3,7 +3,6 @@ import type { TrafficStatus } from "@/components/cockpit/status-badge";
 
 /**
  * Read-only Operations KPIs sourced ONLY from existing safe, RLS-gated views:
- *  - swift_v2.v_cockpit_enrichment_jobs (authenticated SELECT; aggregate only)
  *  - swift_v2.v_daily_run_log           (authenticated SELECT; operational, non-PII)
  *
  * Only aggregate counts, statuses and timestamps are read — never company names,
@@ -11,16 +10,6 @@ import type { TrafficStatus } from "@/components/cockpit/status-badge";
  * missing/forbidden source degrades to `available: false` (placeholder) instead
  * of breaking the page. No raw SQL errors are surfaced.
  */
-
-export interface EnrichmentKpis {
-  available: boolean;
-  status: TrafficStatus;
-  total: number;
-  pending: number;
-  running: number;
-  failed: number;
-  succeeded: number;
-}
 
 export interface IngestionKpis {
   available: boolean;
@@ -58,7 +47,6 @@ export interface GithubKpis {
 }
 
 export interface OperationsData {
-  enrichment: EnrichmentKpis;
   ingestion: IngestionKpis;
   recentEvents: RecentEventsKpis;
   github: GithubKpis;
@@ -106,65 +94,6 @@ function rollupStatus(checks: SystemHealthCheck[]): TrafficStatus {
 export function isSafeGithubRunUrl(url: string | null): boolean {
   if (!url) return false;
   return url.startsWith("https://github.com/") && url.includes("/actions/runs/");
-}
-
-const EMPTY_ENRICHMENT: EnrichmentKpis = {
-  available: false,
-  status: "gray",
-  total: 0,
-  pending: 0,
-  running: 0,
-  failed: 0,
-  succeeded: 0,
-};
-
-// enrichment_jobs status values observed in the cockpit view.
-const STATUS_DONE = "done";
-const STATUS_DEAD_LETTER = "dead_letter";
-const STATUS_PENDING = "pending";
-const STATUS_RUNNING = "running";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-async function countJobs(
-  supabase: SupabaseServerClient,
-  status?: string,
-): Promise<number | null> {
-  let query = supabase
-    .from("v_cockpit_enrichment_jobs")
-    .select("job_id", { count: "exact", head: true });
-  if (status) query = query.eq("status", status);
-  const { count, error } = await query;
-  if (error) return null;
-  return count ?? 0;
-}
-
-async function getEnrichmentKpis(): Promise<EnrichmentKpis> {
-  try {
-    const supabase = await createClient();
-    const [total, succeeded, failed, pending, running] = await Promise.all([
-      countJobs(supabase),
-      countJobs(supabase, STATUS_DONE),
-      countJobs(supabase, STATUS_DEAD_LETTER),
-      countJobs(supabase, STATUS_PENDING),
-      countJobs(supabase, STATUS_RUNNING),
-    ]);
-
-    if (total === null) return EMPTY_ENRICHMENT;
-
-    const failedCount = failed ?? 0;
-    return {
-      available: true,
-      status: failedCount > 0 ? "yellow" : "green",
-      total,
-      pending: pending ?? 0,
-      running: running ?? 0,
-      failed: failedCount,
-      succeeded: succeeded ?? 0,
-    };
-  } catch {
-    return EMPTY_ENRICHMENT;
-  }
 }
 
 function ingestionStatus(
@@ -343,11 +272,10 @@ export async function getSystemHealth(): Promise<SystemHealthKpis> {
 }
 
 export async function getOperationsData(): Promise<OperationsData> {
-  const [enrichment, ingestion, recentEvents, github] = await Promise.all([
-    getEnrichmentKpis(),
+  const [ingestion, recentEvents, github] = await Promise.all([
     getIngestionKpis(),
     getRecentEvents(),
     getGithubSource(),
   ]);
-  return { enrichment, ingestion, recentEvents, github };
+  return { ingestion, recentEvents, github };
 }

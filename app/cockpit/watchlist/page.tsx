@@ -11,10 +11,6 @@ import {
   activeOutreachDraftKeys,
   getOutreachDrafts,
 } from "@/lib/cockpit/outreach.queries";
-import {
-  companyActivityByEntityId,
-  getCompanyActivitySummariesForEntities,
-} from "@/lib/cockpit/company-activity.queries";
 import { getCaseTimelineByEntityId } from "@/lib/cockpit/case-timeline.queries";
 import { GATES, sanitizeGate } from "@/lib/cockpit/acquisition-relevance";
 
@@ -26,10 +22,9 @@ export const dynamic = "force-dynamic";
  * "acquisition") is filtered SERVER-SIDE so the default view shows only NEW,
  * pre-Verteilung-relevant company cases — low-value/late-stage noise lives in the
  * "monitor"/"all" gates and nothing is deleted. Server-capped (?limit=, default
- * 240, max 1000). Company activity summaries are scoped to the loaded rows. All
+ * 240, max 1000). The Bekanntmachung timeline is scoped to the loaded rows. All
  * actions use existing SECURITY DEFINER RPCs; no email sent. Privacy: safe
- * internal fields only — Nachlass person_name is internal-only; no raw
- * text/raw_json/source_snapshot.
+ * internal fields only; no raw text/raw_json/source_snapshot.
  */
 export default async function AcquisitionGatePage({
   searchParams,
@@ -52,14 +47,10 @@ export default async function AcquisitionGatePage({
         .map((r) => r.entity_id as string)
     : [];
 
-  // Scope activity + timeline to the loaded company entities only (batched).
-  const [activity, timelineByEntityId] = await Promise.all([
-    getCompanyActivitySummariesForEntities(companyEntityIds),
-    getCaseTimelineByEntityId(companyEntityIds),
-  ]);
+  // Scope the timeline to the loaded company entities only (batched).
+  const timelineByEntityId = await getCaseTimelineByEntityId(companyEntityIds);
 
   const draftKeys = activeOutreachDraftKeys(drafts.rows);
-  const activityByEntityId = companyActivityByEntityId(activity.rows);
 
   const watchedCompanyIds = inbox.available
     ? inbox.rows
@@ -86,7 +77,6 @@ export default async function AcquisitionGatePage({
         <AcquisitionInbox
           rows={inbox.rows}
           draftKeys={draftKeys}
-          activityByEntityId={activityByEntityId}
           timelineByEntityId={timelineByEntityId}
           gate={gate}
           gateCounts={gateCounts}
