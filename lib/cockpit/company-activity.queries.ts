@@ -3,9 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * Latest Arabic company-activity description per entity, from the internal view
  * swift_v2.v_cockpit_company_activity (migration 0037). This answers "what does
- * the company do?" and is shown on the card EXTERIOR — distinct from the
- * insolvency/acquisition AI review (summary_ar from v_cockpit_ai_case_reviews),
- * which stays inside expanded details.
+ * the company do?" and is shown on the card EXTERIOR.
  *
  * Server-only: imports the server Supabase client; never import into a client
  * component (use `import type` for the types only).

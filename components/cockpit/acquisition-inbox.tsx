@@ -30,23 +30,20 @@ function rowToCard(
   activityByEntityId: Record<string, string>,
   timelineByEntityId: Record<string, CaseTimelineEvent[]>,
 ): CaseCardData {
-  const isNachlass = r.kind === "nachlass";
   const watchKey = `${r.kind}:${r.watch_id ?? ""}`;
-  const companyActivityAr =
-    !isNachlass && r.entity_id ? (activityByEntityId[r.entity_id] ?? null) : null;
-  const timeline =
-    !isNachlass && r.entity_id ? (timelineByEntityId[r.entity_id] ?? []) : [];
+  const companyActivityAr = r.entity_id
+    ? (activityByEntityId[r.entity_id] ?? null)
+    : null;
+  const timeline = r.entity_id ? (timelineByEntityId[r.entity_id] ?? []) : [];
   return {
     key: r.case_key,
-    kind: isNachlass ? "nachlass" : "company",
+    kind: "company",
     source: r.source === "watchlist" ? "watch" : "lead",
     entityId: r.entity_id,
     watchId: r.watch_id,
     detectionId: r.detection_id,
-    subjectId: isNachlass ? r.detection_id : r.entity_id,
-    title: isNachlass
-      ? (r.person_name ?? r.safe_display_label ?? "Nachlassverfahren")
-      : (r.display_title ?? r.safe_display_label ?? "—"),
+    subjectId: r.entity_id,
+    title: r.display_title ?? r.safe_display_label ?? "—",
     city: r.city,
     bundesland: r.bundesland,
     court: r.court,
@@ -90,10 +87,6 @@ const EMPTY_BY_GATE: Record<Gate, { title: string; description: string }> = {
     title: "Keine Monitor-Fälle",
     description:
       "Spätphasen / geringwertige, rein verfahrensbezogene Fälle erscheinen hier.",
-  },
-  nachlass: {
-    title: "Keine Nachlassfälle",
-    description: "Nachlass-/Erbfälle erscheinen hier.",
   },
   all: {
     title: "Keine Fälle",

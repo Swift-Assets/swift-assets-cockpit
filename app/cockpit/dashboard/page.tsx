@@ -242,9 +242,7 @@ export default async function DashboardPage({
               {followUpDue.slice(0, 8).map((r) => (
                 <li key={`${r.kind}:${r.watch_id}`} className="flex items-center justify-between gap-3 py-2">
                   <span className="min-w-0 truncate">
-                    {r.kind === "nachlass"
-                      ? (r.safe_display_label ?? "Nachlassverfahren")
-                      : (r.display_title ?? r.safe_display_label ?? "—")}
+                    {r.display_title ?? r.safe_display_label ?? "—"}
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="text-xs tabular-nums text-muted-foreground">

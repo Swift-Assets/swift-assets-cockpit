@@ -26,7 +26,6 @@ export type Gate =
   | "watchlist"
   | "ignored"
   | "monitor"
-  | "nachlass"
   | "all";
 
 export const DEFAULT_GATE: Gate = "acquisition";
@@ -51,11 +50,6 @@ export const GATES: { key: Gate; label: string; description: string }[] = [
     key: "monitor",
     label: "Monitor",
     description: "Spätphasen / geringwertige, rein verfahrensbezogene Fälle.",
-  },
-  {
-    key: "nachlass",
-    label: "Nachlass",
-    description: "Nachlass-/Erbfälle (separat geführt).",
   },
   {
     key: "all",

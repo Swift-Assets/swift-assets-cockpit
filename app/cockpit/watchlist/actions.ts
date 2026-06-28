@@ -3,22 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { searchCompanyCandidates } from "@/lib/cockpit/watchlist.queries";
-import {
-  searchNachlassCandidates,
-  type NachlassCandidate,
-} from "@/lib/cockpit/nachlass-search.queries";
-import {
-  isWatchStatus,
-  type CompanyCandidate,
-  type WatchKind,
-} from "@/lib/cockpit/watchlist";
+import { isWatchStatus, type CompanyCandidate } from "@/lib/cockpit/watchlist";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type SearchResult =
   | { ok: true; rows: CompanyCandidate[] }
-  | { ok: false; error: string };
-export type NachlassSearchActionResult =
-  | { ok: true; available: boolean; rows: NachlassCandidate[] }
   | { ok: false; error: string };
 
 const PATH = "/cockpit/watchlist";
@@ -53,16 +42,12 @@ function friendlyError(raw?: string): string {
     return "Kein aktiver Cockpit-Zugang.";
   if (msg.includes("insufficient_role"))
     return "Keine Schreibberechtigung für diese Aktion.";
-  if (msg.includes("not_nachlass_authorized"))
-    return "Keine Berechtigung für Nachlass-Einträge.";
   if (msg.includes("watchlist_row_not_found"))
     return "Eintrag wurde nicht gefunden.";
   if (msg.includes("invalid_status")) return "Ungültiger Status.";
   if (msg.includes("invalid_kind")) return "Ungültiger Eintragstyp.";
   if (msg.includes("entity_not_eligible_company"))
     return "Dieses Unternehmen kann nicht hinzugefügt werden.";
-  if (msg.includes("detection_not_found"))
-    return "Eintrag wurde nicht gefunden.";
   if (
     msg.includes("permission") ||
     msg.includes("denied") ||
@@ -72,8 +57,8 @@ function friendlyError(raw?: string): string {
   return "Aktion fehlgeschlagen. Bitte erneut versuchen.";
 }
 
-function isKind(value: string): value is WatchKind {
-  return value === "company" || value === "nachlass";
+function isKind(value: string): value is "company" {
+  return value === "company";
 }
 
 /** Update the watchlist status (watching | pursuing | passed). */
@@ -175,18 +160,6 @@ export async function searchCompaniesAction(
   return { ok: true, rows };
 }
 
-/**
- * Search internal Nachlass candidates (read-only, internal-only). Queries the
- * nachlass_authorized-gated view; never returns raw announcement text. Returns
- * available:false when the backing view is not present yet (migration 0036).
- */
-export async function searchNachlassAction(
-  query: string,
-): Promise<NachlassSearchActionResult> {
-  const { available, rows } = await searchNachlassCandidates(query);
-  return { ok: true, available, rows };
-}
-
 /** Add a company to the user's watchlist via cockpit_watch_company. */
 export async function watchCompanyAction(
   entityId: string,
@@ -214,34 +187,7 @@ export async function watchCompanyAction(
   return { ok: true };
 }
 
-/** Add a Nachlass case to the user's watchlist via cockpit_watch_nachlass. */
-export async function watchNachlassAction(
-  detectionId: string,
-  status: string,
-  note: string,
-  followUpDate: string,
-): Promise<ActionResult> {
-  if (!isUuid(detectionId)) return { ok: false, error: "Ungültige Eingabe." };
-  if (!isWatchStatus(status)) return { ok: false, error: "Ungültiger Status." };
-
-  const iso = optionalFollowUpIso(followUpDate);
-  if (iso === "invalid") return { ok: false, error: "Ungültiges Datum." };
-
-  const trimmedNote = note.trim();
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("cockpit_watch_nachlass", {
-    p_detection_id: detectionId,
-    p_note: trimmedNote.length > 0 ? trimmedNote : null,
-    p_status: status,
-    p_next_follow_up_at: iso,
-  });
-  if (error) return { ok: false, error: friendlyError(error.message) };
-
-  revalidatePath(PATH);
-  return { ok: true };
-}
-
-/** Remove a row from the watchlist via the kind-specific unwatch RPC. */
+/** Remove a company from the watchlist via cockpit_unwatch_company. */
 export async function removeFromWatchlistAction(
   kind: string,
   subjectId: string,
@@ -249,12 +195,9 @@ export async function removeFromWatchlistAction(
   if (!isKind(kind) || !subjectId) return { ok: false, error: "Ungültige Eingabe." };
 
   const supabase = await createClient();
-  const { error } =
-    kind === "company"
-      ? await supabase.rpc("cockpit_unwatch_company", { p_entity_id: subjectId })
-      : await supabase.rpc("cockpit_unwatch_nachlass", {
-          p_detection_id: subjectId,
-        });
+  const { error } = await supabase.rpc("cockpit_unwatch_company", {
+    p_entity_id: subjectId,
+  });
   if (error) return { ok: false, error: friendlyError(error.message) };
 
   revalidatePath(PATH);

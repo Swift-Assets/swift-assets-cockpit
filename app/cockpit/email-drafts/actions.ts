@@ -21,8 +21,6 @@ function friendlyError(raw?: string): string {
   if (m.includes("not_authenticated")) return "Bitte erneut anmelden.";
   if (m.includes("no_active_cockpit_profile")) return "Kein aktiver Cockpit-Zugang.";
   if (m.includes("insufficient_role")) return "Keine Berechtigung.";
-  if (m.includes("nachlass_not_authorized"))
-    return "Keine Berechtigung für Nachlass-Fälle.";
   if (m.includes("invalid_kind")) return "Ungültiger Typ.";
   if (m.includes("watchlist_item_not_found"))
     return "Watchlist-Eintrag wurde nicht gefunden.";
@@ -37,8 +35,7 @@ export async function createOutreachDraftFromWatchlistAction(
   kind: string,
   watchId: string,
 ): Promise<ActionResult> {
-  if (kind !== "company" && kind !== "nachlass")
-    return { ok: false, error: "Ungültiger Typ." };
+  if (kind !== "company") return { ok: false, error: "Ungültiger Typ." };
   if (!isUuid(watchId)) return { ok: false, error: "Ungültige Eingabe." };
 
   const supabase = await createClient();
