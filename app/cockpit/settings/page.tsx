@@ -11,6 +11,9 @@ import { getCockpitProfile } from "@/lib/cockpit/profile";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  // getCockpitProfile is wrapped in React cache(), so this shares the cockpit
+  // layout's single auth round-trip + profile query for this request — no extra
+  // Supabase Auth call is made here.
   const profile = await getCockpitProfile();
 
   return (
