@@ -48,6 +48,12 @@ export interface CaseCardData {
   missingDataFlags: string[];
   sourceQualityFlags: string[];
   status: CaseStatus;
+  /** Company business activity (Gegenstand), Arabic — safe view field; NULL until enriched. */
+  companyActivityAr: string | null;
+  /** Activity provenance label key (aggregator / unternehmensregister / handelsregister / …). */
+  companyActivitySource: string | null;
+  /** Activity confidence (high / medium / low). */
+  companyActivityConfidence: string | null;
   /** Bekanntmachung timeline events (company only; empty until view 0038 applied). */
   timeline: CaseTimelineEvent[];
   hasDraft: boolean;
@@ -99,6 +105,38 @@ function formatMissingDataFlag(flag: string): string {
   return MISSING_FLAG_LABELS[flag] ?? flag;
 }
 
+/** Arabic provenance label for the company-activity source key (subtle badge). */
+const ACTIVITY_SOURCE_LABEL_AR: Record<string, string> = {
+  aggregator: "ويب",
+  web: "ويب",
+  unternehmensregister: "رسمي",
+  handelsregister: "رسمي",
+};
+
+/** Arabic confidence label for the company-activity badge. */
+const ACTIVITY_CONFIDENCE_LABEL_AR: Record<string, string> = {
+  high: "عالٍ",
+  medium: "متوسط",
+};
+
+/**
+ * Returns the trimmed Arabic activity text only when it is a real statement,
+ * else null. Guards against "empty-meaning" leftovers from the enrichment
+ * worker: NULL/empty, too-short fragments (< 8 chars), or obvious dashes/
+ * non-statements. Read-only display; never a placeholder when empty.
+ */
+function meaningfulActivityAr(raw: string | null): string | null {
+  const v = raw?.trim();
+  if (!v) return null;
+  if (v.length < 8) return null;
+  // Strip rows that carry no information (dashes, "n/a", "unbekannt", "null").
+  if (/^[-–—.\s]*$/.test(v)) return null;
+  if (/^(n\/?a|null|none|unbekannt|keine angabe|غير معروف|غير محدد|لا يوجد)$/i.test(v)) {
+    return null;
+  }
+  return v;
+}
+
 function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -135,6 +173,17 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
     data.missingDataFlags,
     data.latestPhase,
   );
+
+  // Company business activity (Gegenstand), Arabic — shown on the card exterior
+  // only for company cards with a real (non-empty-meaning) statement.
+  const activityAr =
+    data.kind === "company" ? meaningfulActivityAr(data.companyActivityAr) : null;
+  const activitySourceLabel = data.companyActivitySource
+    ? ACTIVITY_SOURCE_LABEL_AR[data.companyActivitySource]
+    : undefined;
+  const activityConfidenceLabel = data.companyActivityConfidence
+    ? ACTIVITY_CONFIDENCE_LABEL_AR[data.companyActivityConfidence]
+    : undefined;
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     setError(null);
@@ -208,6 +257,24 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
             {fmtDate(data.latestPublicationDate)}
           </span>
         </div>
+
+        {/* Company business activity (Gegenstand), Arabic — exterior line, shown
+            only for companies with a real statement; nothing when empty/NULL. */}
+        {activityAr ? (
+          <div dir="rtl" className="mt-2 flex items-start justify-between gap-2">
+            <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">النشاط: </span>
+              {activityAr}
+            </p>
+            {activitySourceLabel || activityConfidenceLabel ? (
+              <span className="shrink-0 whitespace-nowrap rounded-none border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {[activitySourceLabel, activityConfidenceLabel]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </button>
 
       {/* Expand toggle */}

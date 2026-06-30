@@ -192,14 +192,15 @@
 
 ---
 
-## K. Company Activity (Gegenstand) Contract — **STEP 1: DB foundation only**
+## K. Company Activity (Gegenstand) Contract — **STEP 2: surfaced on the card**
 
 | Item | Value |
 |---|---|
-| Status | **Backend foundation landed (migration `0046`); NOT yet populated, NOT yet on the UI.** A later worker (separate repo, `service_role`) fills the data; a later UI step renders it on the acquisition card. |
+| Status | **Backend foundation landed (migration `0046`); enrichment worker (separate repo, `service_role`) populates the fields; the Arabic activity is now rendered on the acquisition card exterior.** |
+| Card surface | The Arabic activity (`company_activity_ar`) shows on the card **exterior** (after the Phase/date row, outside the expanded section), prefixed with the label `النشاط:`, RTL, line-clamped to 2 lines, **only for company cards**. A subtle badge appends the provenance (`aggregator`/`web` → `ويب`, `unternehmensregister`/`handelsregister` → `رسمي`) and confidence (`high` → `عالٍ`, `medium` → `متوسط`). Empty/NULL or empty-meaning values (< 8 chars, dashes, "n/a"/"unbekannt"/"غير معروف"/…) render **nothing** — no placeholder. Read-only; only the 4 safe view fields are read via the existing inbox query path. |
 | New table | `swift_v2.company_activity_sources` — per-entity, per-source business activity (DE + AR). RLS-on, **no role grants** (no anon/public/portal/authenticated); written later via `service_role`/SECURITY DEFINER. Frontend must **never** read this raw table. |
 | New view | `swift_v2.v_company_activity_best` — one row per entity (best source → confidence → recency). SECURITY DEFINER + active-cockpit-user gate; `authenticated` only, never anon/public. |
 | New safe fields on `v_cockpit_acquisition_inbox` | `company_activity_ar`, `company_activity_de`, `company_activity_source`, `company_activity_confidence` — appended after `updated_at` (cols 37–40), all `text`. **NULL for every row until enrichment runs.** Safe to read on the card; show graceful empty state while NULL. |
 | Source priority | `handelsregister` > `unternehmensregister` > `aggregator` > `insolvenz_announcement` > `web`; then confidence `high`>`medium`>`low`; then `extracted_at` desc. |
 | Must NOT expose | the raw `company_activity_sources` table, `source_ref`, `matched_hrb`, `extracted_at`, or any insolvency/raw text. The card shows only the DE/AR activity (+ optionally source/confidence labels). |
-| Readiness | DB ready; **not** UI-ready (no data, no frontend wired yet — intentionally). |
+| Readiness | DB ready; data populating; **UI wired** (frontend reads the 4 safe fields and renders the Arabic activity line + badge on the card exterior). |
