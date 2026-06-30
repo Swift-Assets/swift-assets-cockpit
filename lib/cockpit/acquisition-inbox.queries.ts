@@ -41,6 +41,13 @@ export interface AcquisitionInboxRow {
   outreach_blocked_reason: string | null;
   created_at: string | null;
   updated_at: string | null;
+  // Company-activity (Gegenstand) — safe view fields appended after updated_at
+  // (migration 0046). NULL until the enrichment worker fills them. Never read
+  // the raw company_activity_sources table / source_ref / matched_hrb.
+  company_activity_ar: string | null;
+  company_activity_de: string | null;
+  company_activity_source: string | null;
+  company_activity_confidence: string | null;
 }
 
 export interface AcquisitionInboxResult {
@@ -94,7 +101,7 @@ function applyGateFilter<T extends GateFilterable>(query: T, gate: Gate): T {
 }
 
 const COLUMNS =
-  "case_key, kind, source, source_id, entity_id, detection_id, watch_id, is_watched, watch_status, inbox_status, display_title, safe_display_label, city, bundesland, court, aktenzeichen, latest_publication_date, latest_announcement_type, latest_phase, phase_priority, pre_verteilung_relevance, administrator_name, administrator_email, administrator_phone, administrator_address, handelsregister_status, bundesanzeiger_status, financial_data_status, source_quality_flags, missing_data_flags, outreach_ready, outreach_blocked_reason, created_at, updated_at";
+  "case_key, kind, source, source_id, entity_id, detection_id, watch_id, is_watched, watch_status, inbox_status, display_title, safe_display_label, city, bundesland, court, aktenzeichen, latest_publication_date, latest_announcement_type, latest_phase, phase_priority, pre_verteilung_relevance, administrator_name, administrator_email, administrator_phone, administrator_address, handelsregister_status, bundesanzeiger_status, financial_data_status, source_quality_flags, missing_data_flags, outreach_ready, outreach_blocked_reason, created_at, updated_at, company_activity_ar, company_activity_de, company_activity_source, company_activity_confidence";
 
 const DEFAULT_LIMIT = 240;
 const MIN_LIMIT = 24;

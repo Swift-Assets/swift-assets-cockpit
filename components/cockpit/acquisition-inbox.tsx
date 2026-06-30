@@ -59,6 +59,9 @@ function rowToCard(
     missingDataFlags: r.missing_data_flags ?? [],
     sourceQualityFlags: r.source_quality_flags ?? [],
     status: inboxStatusToCard(r.inbox_status),
+    companyActivityAr: r.company_activity_ar,
+    companyActivitySource: r.company_activity_source,
+    companyActivityConfidence: r.company_activity_confidence,
     timeline,
     hasDraft: r.watch_id ? draftKeySet.has(watchKey) : false,
   };
