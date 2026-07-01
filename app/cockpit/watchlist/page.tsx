@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/cockpit/page-header";
 import { WatchlistAddPanel } from "@/components/cockpit/watchlist-add-panel";
 import { AcquisitionInbox } from "@/components/cockpit/acquisition-inbox";
 import {
+  getAcquisitionArabicCount,
   getAcquisitionGateCounts,
   getAcquisitionInbox,
   sanitizeInboxLimit,
@@ -29,16 +30,19 @@ export const dynamic = "force-dynamic";
 export default async function AcquisitionGatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ limit?: string; gate?: string }>;
+  searchParams: Promise<{ limit?: string; gate?: string; onlyArabic?: string }>;
 }) {
-  const { limit: limitParam, gate: gateParam } = await searchParams;
+  const { limit: limitParam, gate: gateParam, onlyArabic: onlyArabicParam } =
+    await searchParams;
   const limit = sanitizeInboxLimit(limitParam);
   const gate = sanitizeGate(gateParam);
+  const onlyArabic = onlyArabicParam === "1";
 
-  const [inbox, drafts, gateCounts] = await Promise.all([
-    getAcquisitionInbox({ limit, gate }),
+  const [inbox, drafts, gateCounts, arabicCount] = await Promise.all([
+    getAcquisitionInbox({ limit, gate, onlyArabic }),
     getOutreachDrafts(),
     getAcquisitionGateCounts(GATES.map((g) => g.key)),
+    getAcquisitionArabicCount(gate),
   ]);
 
   const companyEntityIds = inbox.available
@@ -83,6 +87,8 @@ export default async function AcquisitionGatePage({
           loadedCount={inbox.loadedCount}
           totalCount={inbox.totalCount}
           serverLimit={inbox.limit}
+          onlyArabic={onlyArabic}
+          arabicCount={arabicCount}
         />
       )}
     </div>

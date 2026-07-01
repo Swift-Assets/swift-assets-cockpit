@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   AcquisitionCaseCard,
   type CaseCardData,
 } from "@/components/cockpit/acquisition-case-card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import type { AcquisitionInboxRow } from "@/lib/cockpit/acquisition-inbox.queries";
 import type { CaseTimelineEvent } from "@/lib/cockpit/case-timeline.queries";
@@ -101,6 +103,8 @@ export function AcquisitionInbox({
   loadedCount,
   totalCount,
   serverLimit,
+  onlyArabic,
+  arabicCount,
 }: {
   rows: AcquisitionInboxRow[];
   draftKeys: string[];
@@ -110,7 +114,25 @@ export function AcquisitionInbox({
   loadedCount: number;
   totalCount: number | null;
   serverLimit: number;
+  /** Whether the "only companies with an Arabic activity summary" filter is on. */
+  onlyArabic: boolean;
+  /** Exact count of companies in this gate that HAVE company_activity_ar. */
+  arabicCount: number | null;
 }) {
+  const router = useRouter();
+
+  // Server-side filter: toggling navigates (?onlyArabic=1), preserving the gate,
+  // so the whole dataset + count are re-filtered — not just the current page.
+  function toggleOnlyArabic(next: boolean) {
+    const params = new URLSearchParams();
+    params.set("gate", gate);
+    if (next) params.set("onlyArabic", "1");
+    router.push(`/cockpit/watchlist?${params.toString()}`);
+  }
+
+  // Helper to build a gate href that carries the current filter state.
+  const gateHref = (key: string) =>
+    `/cockpit/watchlist?gate=${key}${onlyArabic ? "&onlyArabic=1" : ""}`;
   // Rows are already filtered SERVER-SIDE to the active gate; the client only
   // paginates the render window.
   const cards = useMemo(() => {
@@ -121,7 +143,7 @@ export function AcquisitionInbox({
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   useEffect(() => {
     setVisibleLimit(PAGE_SIZE);
-  }, [gate]);
+  }, [gate, onlyArabic]);
 
   const visibleLimited = useMemo(
     () => cards.slice(0, visibleLimit),
@@ -132,6 +154,18 @@ export function AcquisitionInbox({
 
   return (
     <div className="space-y-5">
+      {/* Toolbar — server-side filter (query-level, respects count + pagination). */}
+      <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-foreground">
+        <Checkbox
+          checked={onlyArabic}
+          onChange={(e) => toggleOnlyArabic(e.target.checked)}
+        />
+        <span>Nur Firmen mit arabischer Tätigkeitsbeschreibung</span>
+        <span className="tabular-nums text-muted-foreground">
+          ({arabicCount !== null ? arabicCount.toLocaleString("de-DE") : "—"})
+        </span>
+      </label>
+
       {/* Acquisition Gate tabs — server-driven (each is a ?gate= link). */}
       <div className="cockpit-scroll flex gap-1 overflow-x-auto rounded-lg border border-border bg-panel-solid p-1">
         {GATES.map((g) => {
@@ -140,7 +174,7 @@ export function AcquisitionInbox({
           return (
             <Link
               key={g.key}
-              href={`/cockpit/watchlist?gate=${g.key}`}
+              href={gateHref(g.key)}
               title={g.description}
               aria-current={active ? "page" : undefined}
               className={cn(
@@ -196,7 +230,7 @@ export function AcquisitionInbox({
                 href={`/cockpit/watchlist?gate=${gate}&limit=${Math.min(
                   serverLimit + SERVER_STEP,
                   MAX_SERVER_LIMIT,
-                )}`}
+                )}${onlyArabic ? "&onlyArabic=1" : ""}`}
                 className="text-[12px] font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground"
               >
                 Mehr vom Server laden

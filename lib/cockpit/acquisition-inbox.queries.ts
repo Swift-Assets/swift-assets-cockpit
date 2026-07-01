@@ -129,16 +129,23 @@ export function sanitizeInboxLimit(value: unknown): number {
  * returns { available:false, rows:[] } on any error. Read-only, RLS session.
  */
 export async function getAcquisitionInbox(
-  options?: { limit?: number; gate?: Gate },
+  options?: { limit?: number; gate?: Gate; onlyArabic?: boolean },
 ): Promise<AcquisitionInboxResult> {
   const limit = sanitizeInboxLimit(options?.limit);
   const gate: Gate = options?.gate ?? "acquisition";
+  const onlyArabic = options?.onlyArabic ?? false;
   try {
     const supabase = await createClient();
     const base = supabase
       .from("v_cockpit_acquisition_inbox")
       .select(COLUMNS, { count: "exact" });
-    const { data, error, count } = await applyGateFilter(base, gate)
+    // Server-side filter over the WHOLE dataset (respects the exact count and
+    // pagination) — never a client-side .filter() on an already-fetched page.
+    const gated = applyGateFilter(base, gate);
+    const filtered = onlyArabic
+      ? gated.not("company_activity_ar", "is", null)
+      : gated;
+    const { data, error, count } = await filtered
       .order("latest_publication_date", { ascending: false, nullsFirst: false })
       .range(0, limit - 1);
     if (error)
@@ -182,5 +189,31 @@ export async function getAcquisitionGateCounts(
     return Object.fromEntries(entries);
   } catch {
     return {};
+  }
+}
+
+/**
+ * Exact head-only count (no rows fetched) of cases in a gate that HAVE an Arabic
+ * company-activity summary (company_activity_ar IS NOT NULL). Server-side over
+ * the whole dataset — powers the "(N)" next to the Arabic-only filter checkbox
+ * and lets the number show even while the filter is off. Fail-safe: null on any
+ * error. Read-only, RLS session.
+ */
+export async function getAcquisitionArabicCount(
+  gate: Gate,
+): Promise<number | null> {
+  try {
+    const supabase = await createClient();
+    const base = supabase
+      .from("v_cockpit_acquisition_inbox")
+      .select("case_key", { count: "exact", head: true });
+    const { count, error } = await applyGateFilter(base, gate).not(
+      "company_activity_ar",
+      "is",
+      null,
+    );
+    return error ? null : (count ?? null);
+  } catch {
+    return null;
   }
 }
