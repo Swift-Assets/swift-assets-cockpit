@@ -2,6 +2,7 @@ import { Activity, Clock, Mail, Sparkles, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MetricCard } from "@/components/cockpit/metric-card";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { SectionCard } from "@/components/cockpit/section-card";
@@ -125,6 +126,13 @@ export default function ThemePreviewPage() {
         title="Acquisition-Karte · Inhaltstest (Firmengegenstand AR)"
         description="Echte <AcquisitionCaseCard> an realer Kartenbreite. Links: langer arabischer Firmengegenstand (voller Absatz) — muss wachsen, umbrechen und lokal RTL rendern, ohne zu beschneiden. Rechts: kurzer Fall als Höhenvergleich. Gemischt: deutsche Labels + arabischer Fließtext + lateinische Daten/IDs."
       >
+        {/* Server-side filter toolbar (static demo of the glass checkbox). */}
+        <label className="mb-4 flex w-fit items-center gap-2 text-sm text-foreground">
+          <Checkbox defaultChecked />
+          <span>Nur Firmen mit arabischer Tätigkeitsbeschreibung</span>
+          <span className="tabular-nums text-muted-foreground">(412)</span>
+        </label>
+
         <div id="card-test" className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <AcquisitionCaseCard data={TEST_CASE} />
           <AcquisitionCaseCard data={SHORT_CASE} />
