@@ -87,6 +87,20 @@ const SHORT_CASE: CaseCardData = {
   companyActivityAr: "تجارة وتركيب الألواح الشمسية.",
 };
 
+// Coverage is partial (~41%): this card has NO activity → quiet placeholder.
+const NULL_CASE: CaseCardData = {
+  ...TEST_CASE,
+  key: "preview-null-ar",
+  title: "Alpenland Logistik GmbH",
+  city: "Augsburg",
+  bundesland: "Bayern",
+  phasePriority: "medium",
+  preVerteilung: false,
+  companyActivityAr: null,
+  companyActivitySource: null,
+  companyActivityConfidence: null,
+};
+
 export default function ThemePreviewPage() {
   return (
     <main className="mx-auto w-full max-w-[1200px] space-y-6 p-6 lg:p-10">
@@ -114,6 +128,7 @@ export default function ThemePreviewPage() {
         <div id="card-test" className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <AcquisitionCaseCard data={TEST_CASE} />
           <AcquisitionCaseCard data={SHORT_CASE} />
+          <AcquisitionCaseCard data={NULL_CASE} />
         </div>
       </SectionCard>
 

@@ -260,30 +260,40 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
           </span>
         </div>
 
-        {/* Company business activity (Gegenstand), Arabic — exterior block, shown
-            only for companies with a real statement; nothing when empty/NULL.
-            Renders RTL locally (dir="rtl") inside the otherwise-German LTR card,
-            using logical properties. Full text: never truncated, always wraps. */}
-        {activityAr ? (
-          <div
-            dir="rtl"
-            lang="ar"
-            className="mt-3 rounded-md border border-border bg-[rgba(255,255,255,0.03)] px-3 py-2 text-start"
-          >
-            <p className="text-[12px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
-              <span className="font-medium text-foreground">النشاط: </span>
-              {activityAr}
+        {/* Company business activity (Gegenstand / Firmengegenstand), Arabic —
+            ALWAYS rendered on the card exterior (collapsed view) for company
+            cards, so it's readable without opening the card. Field:
+            company_activity_ar from v_cockpit_acquisition_inbox.
+            When present: RTL locally (dir="rtl" lang="ar") inside the German
+            LTR card, right-aligned via logical props, full text (never
+            truncated, always wraps, grows with content). When NULL (coverage is
+            partial): a quiet muted placeholder keeps the layout stable. */}
+        {data.kind === "company" ? (
+          activityAr ? (
+            <div
+              dir="rtl"
+              lang="ar"
+              className="mt-3 rounded-md border border-border bg-[rgba(255,255,255,0.03)] px-3 py-2 text-start"
+            >
+              <p className="text-[12px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+                <span className="font-medium text-foreground">النشاط: </span>
+                {activityAr}
+              </p>
+              {activitySourceLabel || activityConfidenceLabel ? (
+                <div className="mt-1.5">
+                  <span className="inline-block whitespace-nowrap rounded-full border border-border bg-[rgba(255,255,255,0.06)] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {[activitySourceLabel, activityConfidenceLabel]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-3 text-[12px] italic text-muted-foreground">
+              Keine Tätigkeitsbeschreibung
             </p>
-            {activitySourceLabel || activityConfidenceLabel ? (
-              <div className="mt-1.5">
-                <span className="inline-block whitespace-nowrap rounded-full border border-border bg-[rgba(255,255,255,0.06)] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {[activitySourceLabel, activityConfidenceLabel]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </div>
-            ) : null}
-          </div>
+          )
         ) : null}
       </button>
 
