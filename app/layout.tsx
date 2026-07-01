@@ -1,5 +1,15 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+// Load Inter via next/font and expose it as --font-sans (consumed by Tailwind's
+// font-sans and the globals.css token). Latin UI; the product copy is German.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Swift Assets · Cockpit",
@@ -11,7 +21,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="de" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-screen font-sans antialiased">{children}</body>
     </html>
   );

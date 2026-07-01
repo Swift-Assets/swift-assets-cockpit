@@ -111,6 +111,7 @@ export function KeywordAlertManager({
                 type="checkbox"
                 checked={emailEnabled}
                 onChange={(e) => setEmailEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-[rgba(255,255,255,0.04)] accent-[color:var(--accent)]"
               />
               E-Mail aktivieren (Versand folgt)
             </label>

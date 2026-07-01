@@ -3,19 +3,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-none border px-2 py-0.5 text-xs font-medium transition-colors",
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
   {
     variants: {
       variant: {
         default: "border-transparent bg-primary text-primary-foreground",
         outline: "border-border text-foreground",
-        muted: "border-transparent bg-muted text-muted-foreground",
-        // Traffic-light + accent statuses used across cockpit modules.
-        green: "border-status-green/20 bg-status-green/10 text-status-green",
-        yellow: "border-status-yellow/20 bg-status-yellow/10 text-status-yellow",
-        red: "border-status-red/20 bg-status-red/10 text-status-red",
-        blue: "border-status-blue/20 bg-status-blue/10 text-status-blue",
-        gray: "border-status-gray/20 bg-status-gray/10 text-status-gray",
+        muted:
+          "border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.06)] text-muted-foreground",
+        // Soft tinted glass pills — distinct light text per tone.
+        green:
+          "border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.16)] text-[#bbf7d0]",
+        yellow:
+          "border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.14)] text-[#fde68a]",
+        red: "border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.14)] text-[#fecaca]",
+        blue: "border-[rgba(56,189,248,0.3)] bg-[rgba(56,189,248,0.14)] text-[#bae6fd]",
+        gray: "border-[rgba(100,116,139,0.35)] bg-[rgba(100,116,139,0.18)] text-[#cbd5e1]",
       },
     },
     defaultVariants: {

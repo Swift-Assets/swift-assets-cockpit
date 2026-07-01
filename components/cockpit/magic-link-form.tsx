@@ -77,7 +77,7 @@ export function MagicLinkForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="name@swift-assets.de"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-10 w-full rounded-md border border-input bg-[rgba(255,255,255,0.04)] px-3 py-1 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/60"
         />
       </div>
       <Button type="submit" className="w-full" disabled={status === "sending"}>

@@ -18,7 +18,8 @@ export function DataTableContainer({
   return (
     <div
       className={cn(
-        "cockpit-scroll w-full overflow-x-auto rounded-lg border border-border",
+        // Opaque solid surface — dense tables avoid backdrop-blur (perf: Part C).
+        "cockpit-scroll w-full overflow-x-auto rounded-lg border border-border bg-panel-solid",
         className,
       )}
     >
