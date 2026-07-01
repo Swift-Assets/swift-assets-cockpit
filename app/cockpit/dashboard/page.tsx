@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/cockpit/page-header";
 import { SectionCard } from "@/components/cockpit/section-card";
 import { EmptyState } from "@/components/cockpit/empty-state";
 import { StatusBadge } from "@/components/cockpit/status-badge";
+import { StatusTag } from "@/components/cockpit/status-tag";
 import { AcquisitionLeadsTable } from "@/components/cockpit/acquisition-leads-table";
 import { getAcquisitionLeads } from "@/lib/cockpit/acquisition.queries";
 import { getInternalWatchlist } from "@/lib/cockpit/watchlist-internal.queries";
@@ -401,12 +402,18 @@ export default async function DashboardPage({
       </SectionCard>
 
       {/* 5. Compact system status strip (operations lives on its own page) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-panel-solid px-4 py-3 text-sm shadow-card">
         <div className="flex items-center gap-2">
-          <StatusBadge
-            status={systemHealth.available ? systemHealth.status : "gray"}
-            withDot
-          />
+          {systemHealth.available && systemHealth.status === "green" ? (
+            <StatusTag tone="positive" dot="pulse">
+              Live
+            </StatusTag>
+          ) : (
+            <StatusBadge
+              status={systemHealth.available ? systemHealth.status : "gray"}
+              withDot
+            />
+          )}
           <span className="text-muted-foreground">
             {systemHealth.available
               ? `System: ${systemHealth.checks.length} Checks · ${healthRed} rot · ${healthYellow} gelb`

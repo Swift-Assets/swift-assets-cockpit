@@ -8,6 +8,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
+      // Opaque "solid" glass surface — the default card. For translucent
+      // hero/KPI/side-panel surfaces use <GlassCard> instead (perf: Part C).
       "rounded-lg border border-border bg-card text-card-foreground shadow-card",
       className,
     )}

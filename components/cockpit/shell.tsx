@@ -15,7 +15,7 @@ export function CockpitShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen">
       <CockpitSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <CockpitTopbar profile={profile} />

@@ -4,48 +4,69 @@
 
 @layer base {
   /*
-   * Swift Assets brand system — transferred from the official website source
-   * (src/styles.css, Logo/Nav/Hero). Editorial black-on-white: paper canvas,
-   * ink-black text, BLACK chrome (sidebar/topbar/login), square 0px corners,
-   * exact neutral palette (#000 #1a1a1a #2d2d2d #888 #a3a3a3 #d4d4d4 #fff),
-   * Inter. Restrained status hues only.
+   * Swift Assets — Glass theme (presentation layer).
+   *
+   * Dark, translucent "cockpit glass" system extracted verbatim from the
+   * reference project. Tokens live here as the single source of truth and are
+   * mirrored in tailwind.config.ts (theme.extend.colors). No hard-coded hex
+   * outside this file.
+   *
+   * Two token conventions coexist:
+   *   1. shadcn/brand semantic tokens as HSL triplets (consumed via
+   *      `hsl(var(--x) / <alpha-value>)` in Tailwind so opacity modifiers work).
+   *   2. Glass-specific surfaces/accents as full color values (hex/rgba),
+   *      consumed directly via `var(--x)` — these carry baked-in alpha.
    */
   :root {
-    --background: 0 0% 100%; /* paper #ffffff */
-    --foreground: 0 0% 0%; /* ink #000000 */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
-    --primary: 0 0% 0%; /* black buttons */
+    /* --- shadcn semantic tokens (HSL triplets) --- */
+    --background: 225 49% 8%; /* #0b1020 base canvas */
+    --foreground: 224 48% 94%; /* #e8ecf7 text */
+    --card: 220 42% 13%; /* #131c2e opaque "solid panel" (default cards/tables) */
+    --card-foreground: 224 48% 94%;
+    --muted: 221 35% 16%; /* #1b2438 subtle raised surface */
+    --muted-foreground: 224 27% 75%; /* #aeb7d0 */
+    --primary: 252 100% 68%; /* #7c5cff violet accent */
     --primary-foreground: 0 0% 100%;
-    --border: 0 0% 85%; /* light divider ~#d9d9d9 */
-    --input: 0 0% 80%;
-    --ring: 0 0% 0%;
-    --radius: 0px; /* square, architectural */
+    --border: 224 25% 22%; /* hairline on dark (≈ rgba(255,255,255,0.12) look) */
+    --input: 224 25% 22%;
+    --ring: 198 93% 60%; /* #38bdf8 sky focus ring */
+    --radius: 22px; /* glass card radius */
 
-    --font-sans: "Inter", "DM Sans", ui-sans-serif, system-ui,
-      -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* --- brand chrome neutrals (HSL triplets), repointed to dark glass --- */
+    --ink: 225 49% 8%; /* #0b1020 */
+    --ink-soft: 221 35% 16%; /* #1b2438 borders / hover */
+    --ink-mid: 226 31% 24%; /* #2a3350 dividers */
+    --mute: 224 27% 75%; /* #aeb7d0 */
+    --mute-2: 223 18% 60%; /* #8892ac */
+    --nav: 224 27% 75%; /* #aeb7d0 nav text */
+    --line: 226 31% 24%; /* #2a3350 */
+    --paper: 224 48% 94%; /* #e8ecf7 (light text on dark chrome) */
 
-    /* Exact brand neutrals (from website @theme tokens). */
-    --ink: 0 0% 0%; /* #000 */
-    --ink-soft: 0 0% 10%; /* #1a1a1a */
-    --ink-mid: 0 0% 18%; /* #2d2d2d */
-    --mute: 0 0% 53%; /* #888 */
-    --mute-2: 0 0% 64%; /* #a3a3a3 */
-    --nav: 0 0% 74%; /* #bdbdbd */
-    --line: 0 0% 83%; /* #d4d4d4 */
-    --paper: 0 0% 100%; /* #fff */
+    /* --- status hues (HSL triplets) — glass accents --- */
+    --status-green: 142 71% 45%; /* #22c55e */
+    --status-yellow: 38 92% 50%; /* #f59e0b */
+    --status-red: 0 84% 60%; /* #ef4444 */
+    --status-blue: 198 93% 60%; /* #38bdf8 */
+    --status-gray: 215 16% 47%; /* #64748b */
 
-    /* Restrained status hues (readable on white). */
-    --status-green: 152 46% 33%;
-    --status-yellow: 36 78% 38%;
-    --status-red: 0 60% 45%;
-    --status-blue: 214 52% 40%;
-    --status-gray: 0 0% 45%;
+    /* --- glass surfaces & accents (full values, baked-in alpha) --- */
+    --bg: #0b1020;
+    --bg-2: #11182c;
+    --panel: rgba(255, 255, 255, 0.08); /* glass card */
+    --panel-strong: rgba(255, 255, 255, 0.12);
+    --panel-solid: #131c2e; /* opaque variant for dense tables (perf) */
+    --accent: #7c5cff; /* primary (violet) */
+    --accent-2: #22c55e; /* green — positive / success */
+    --accent-3: #38bdf8; /* sky */
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --low: #64748b;
 
-    --shadow-card: none;
-    --shadow-pop: 0 24px 60px -24px hsl(0 0% 0% / 0.35);
+    /* --- elevation --- */
+    --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    --shadow-card: var(--shadow);
+    --shadow-pop: 0 24px 60px -12px rgba(0, 0, 0, 0.55);
+    --glow: 0 0 20px rgba(56, 189, 248, 0.35);
   }
 
   * {
@@ -53,8 +74,16 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "cv01" 1;
+    @apply text-foreground;
+    /* Signature fixed background — sits behind everything. */
+    background:
+      radial-gradient(circle at top left, rgba(124, 92, 255, 0.22), transparent 30%),
+      radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 26%),
+      radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.14), transparent 28%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    background-attachment: fixed;
+    background-color: var(--bg);
+    font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -71,10 +100,30 @@
 }
 
 @layer components {
-  /* Section eyebrow — website style: uppercase, wide tracking, muted #888. */
+  /* Section eyebrow — uppercase, wide tracking, muted. */
   .eyebrow {
     @apply text-[0.7rem] font-medium uppercase tracking-[0.3em];
     color: hsl(var(--mute));
+  }
+
+  /* Core glass surface (also available as <GlassCard>). Use for hero/KPI
+     cards, side panels, modals — NOT for large tables (see .solid-surface). */
+  .glass-surface {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    border-radius: var(--radius);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  /* Opaque surface — same palette, no blur (cheaper). Use for big tables and
+     long lists (see <SolidCard>). */
+  .solid-surface {
+    background: var(--panel-solid);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    border-radius: var(--radius);
   }
 }
 
@@ -91,5 +140,54 @@
     background-color: hsl(var(--border));
     border: 3px solid transparent;
     background-clip: content-box;
+    border-radius: 9999px;
+  }
+}
+
+/* --- Motion (kept subtle; disabled under prefers-reduced-motion) --- */
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s infinite;
+}
+.animate-toast-in {
+  animation: toast-slide-in 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

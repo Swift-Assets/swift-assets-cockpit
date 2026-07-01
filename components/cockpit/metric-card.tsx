@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Card } from "@/components/ui/card";
+import { GlassCard } from "@/components/cockpit/glass-card";
 import { StatusBadge, type TrafficStatus } from "@/components/cockpit/status-badge";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ export function MetricCard({
   className?: string;
 }) {
   return (
-    <Card className={cn("p-4", className)}>
+    <GlassCard className={cn("p-4 transition-transform hover:-translate-y-0.5", className)}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           {icon ? <span className="text-muted-foreground/80">{icon}</span> : null}
@@ -46,6 +46,6 @@ export function MetricCard({
       {hint ? (
         <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
       ) : null}
-    </Card>
+    </GlassCard>
   );
 }
