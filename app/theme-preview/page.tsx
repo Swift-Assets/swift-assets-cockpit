@@ -17,6 +17,10 @@ import {
   Th,
   Tr,
 } from "@/components/cockpit/data-table";
+import {
+  AcquisitionCaseCard,
+  type CaseCardData,
+} from "@/components/cockpit/acquisition-case-card";
 
 /**
  * TEMPORARY glass-theme preview (no Supabase, no auth) — mirrors the dashboard
@@ -31,6 +35,57 @@ const ROWS = [
   { name: "Schäfer & Co. KG", city: "Köln", phase: "Verwertung", date: "08.06.2026", tone: "danger" as const },
   { name: "Bergmann Handels GmbH", city: "Stuttgart", phase: "Eröffnet", date: "05.06.2026", tone: "neutral" as const },
 ];
+
+// Realistic LONG Arabic business-activity summary (Firmengegenstand) to prove
+// the card grows, wraps, and renders RTL locally without clipping.
+const LONG_ACTIVITY_AR =
+  "تتمثل أنشطة الشركة في تطوير وتصنيع وتوزيع الحلول التقنية والبرمجية المتقدمة، إضافةً إلى تقديم خدمات الاستشارات الهندسية وإدارة المشاريع الصناعية، واستيراد وتصدير المعدات الكهربائية والإلكترونية، وصيانة الأنظمة والشبكات الصناعية، كما تشمل الاستثمار العقاري وإدارة الممتلكات وتقديم خدمات اللوجستيات والنقل والتخزين داخل ألمانيا وخارجها، مع ممارسة جميع الأعمال التجارية والمالية ذات الصلة بغرض الشركة.";
+
+const TEST_CASE: CaseCardData = {
+  key: "preview-long-ar",
+  kind: "company",
+  source: "lead",
+  entityId: "preview-entity",
+  watchId: null,
+  detectionId: null,
+  subjectId: null,
+  title: "Rheintal Industrie- und Handelsgesellschaft mbH",
+  city: "Düsseldorf",
+  bundesland: "Nordrhein-Westfalen",
+  court: "Amtsgericht Düsseldorf",
+  aktenzeichen: "502 IN 1234/26",
+  latestPhase: "eroeffnet",
+  latestAnnouncementType: "Eröffnungsbeschluss",
+  phasePriority: "high",
+  preVerteilung: true,
+  latestPublicationDate: "2026-06-12",
+  administratorName: "Dr. jur. Katharina Vollmer",
+  administratorEmail: "kanzlei@vollmer-insolvenz.de",
+  administratorPhone: "+49 211 1234567",
+  administratorAddress: "Königsallee 1, 40212 Düsseldorf",
+  handelsregisterStatus: "vorhanden",
+  bundesanzeigerStatus: null,
+  financialDataStatus: "teilweise",
+  missingDataFlags: [],
+  sourceQualityFlags: [],
+  status: "neu",
+  companyActivityAr: LONG_ACTIVITY_AR,
+  companyActivitySource: "aggregator",
+  companyActivityConfidence: "high",
+  timeline: [],
+  hasDraft: false,
+};
+
+const SHORT_CASE: CaseCardData = {
+  ...TEST_CASE,
+  key: "preview-short-ar",
+  title: "Nordwind Solar GmbH",
+  city: "Hamburg",
+  bundesland: "Hamburg",
+  phasePriority: "low",
+  preVerteilung: false,
+  companyActivityAr: "تجارة وتركيب الألواح الشمسية.",
+};
 
 export default function ThemePreviewPage() {
   return (
@@ -50,6 +105,17 @@ export default function ThemePreviewPage() {
         <MetricCard label="Verwalter vorhanden" value={18} hint="Kontakt für Outreach" icon={<Mail className="h-4 w-4" />} />
         <MetricCard label="Ignoriert / inaktiv" value={5} hint="Status „passed“" icon={<XCircle className="h-4 w-4" />} />
       </div>
+
+      {/* Acquisition card — content-safety test (real component). */}
+      <SectionCard
+        title="Acquisition-Karte · Inhaltstest (Firmengegenstand AR)"
+        description="Echte <AcquisitionCaseCard> an realer Kartenbreite. Links: langer arabischer Firmengegenstand (voller Absatz) — muss wachsen, umbrechen und lokal RTL rendern, ohne zu beschneiden. Rechts: kurzer Fall als Höhenvergleich. Gemischt: deutsche Labels + arabischer Fließtext + lateinische Daten/IDs."
+      >
+        <div id="card-test" className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <AcquisitionCaseCard data={TEST_CASE} />
+          <AcquisitionCaseCard data={SHORT_CASE} />
+        </div>
+      </SectionCard>
 
       {/* Search + buttons */}
       <SectionCard title="Suche" description="Stichwort + Filter über Firmen-Insolvenzfälle.">

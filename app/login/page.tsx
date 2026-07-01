@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { BirdMark } from "@/components/cockpit/brand";
+import { GlassCard } from "@/components/cockpit/glass-card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { safeRedirectPath } from "@/lib/auth/temp-access";
 
 /**
@@ -44,82 +47,85 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-ink px-6 py-16 text-white">
-      <div className="flex w-full max-w-md flex-col items-center text-center">
-        <BirdMark size={132} priority />
+    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16 text-foreground">
+      <GlassCard className="w-full max-w-md p-8 sm:p-10">
+        <div className="flex flex-col items-center text-center">
+          <BirdMark size={104} priority />
 
-        <h1
-          className="mt-10 font-semibold leading-none"
-          style={{
-            fontSize: "clamp(2rem, 7vw, 3.25rem)",
-            letterSpacing: "clamp(2px, 1.2vw, 12px)",
-          }}
-        >
-          SWIFT&nbsp;ASSETS
-        </h1>
-        <p className="mt-4 text-xs font-light uppercase tracking-[0.3em] text-mute">
-          UG (Haftungsbeschränkt) · Internal Cockpit
-        </p>
-
-        <div className="my-12 h-px w-24 bg-ink-mid" aria-hidden />
-
-        <form onSubmit={handleSubmit} className="w-full space-y-5 text-left">
-          <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute"
-            >
-              E-Mail
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@swift-assets.de"
-              className="flex h-12 w-full border border-ink-mid bg-transparent px-4 text-sm text-white outline-none transition-colors placeholder:text-mute focus:border-white"
-            />
-          </div>
-          <div className="space-y-2">
-            <label
-              htmlFor="password"
-              className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute"
-            >
-              Passwort
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="flex h-12 w-full border border-ink-mid bg-transparent px-4 text-sm text-white outline-none transition-colors placeholder:text-mute focus:border-white"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={status === "submitting"}
-            className="inline-flex h-12 w-full items-center justify-center gap-3 border border-white text-sm uppercase tracking-[0.3em] text-white transition-colors hover:bg-white hover:text-ink disabled:opacity-50"
+          <h1
+            className="mt-8 font-semibold leading-none"
+            style={{
+              fontSize: "clamp(1.75rem, 6vw, 2.75rem)",
+              letterSpacing: "clamp(2px, 1.1vw, 10px)",
+            }}
           >
-            {status === "submitting" ? "Wird geprüft…" : "Einloggen"}
-            <span aria-hidden>→</span>
-          </button>
-          {status === "error" ? (
-            <p className="text-sm text-status-red">Ungültige Zugangsdaten.</p>
-          ) : null}
-        </form>
+            SWIFT&nbsp;ASSETS
+          </h1>
+          <p className="mt-4 text-xs font-light uppercase tracking-[0.3em] text-mute-2">
+            UG (Haftungsbeschränkt) · Internal Cockpit
+          </p>
 
-        <p className="mt-10 text-[0.7rem] uppercase tracking-[0.22em] text-mute">
-          Kein öffentlicher Zugang
-        </p>
-      </div>
+          <div className="my-8 h-px w-24 bg-ink-mid" aria-hidden />
+
+          <form onSubmit={handleSubmit} className="w-full space-y-5 text-start">
+            <div className="space-y-2">
+              <label
+                htmlFor="email"
+                className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute-2"
+              >
+                E-Mail
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@swift-assets.de"
+                className="h-12 px-4"
+              />
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="block text-[0.7rem] font-medium uppercase tracking-[0.3em] text-mute-2"
+              >
+                Passwort
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="h-12 px-4"
+              />
+            </div>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={status === "submitting"}
+              className="h-12 w-full gap-3 text-sm uppercase tracking-[0.2em]"
+            >
+              {status === "submitting" ? "Wird geprüft…" : "Einloggen"}
+              <span aria-hidden>→</span>
+            </Button>
+            {status === "error" ? (
+              <p className="text-sm text-status-red">Ungültige Zugangsdaten.</p>
+            ) : null}
+          </form>
+
+          <p className="mt-8 text-[0.7rem] uppercase tracking-[0.22em] text-mute-2">
+            Kein öffentlicher Zugang
+          </p>
+        </div>
+      </GlassCard>
     </main>
   );
 }

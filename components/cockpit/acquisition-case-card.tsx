@@ -232,7 +232,9 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
       : "Erstellt einen editierbaren Entwurf (kein Versand).";
 
   return (
-    <div className="flex flex-col border border-border bg-card transition-colors hover:bg-muted/40">
+    // Grows with content (flex column + min-height, never a fixed height) so the
+    // Arabic Firmengegenstand is never clipped. Solid surface (perf: many cards).
+    <div className="flex min-h-[11rem] flex-col overflow-hidden rounded-lg border border-border bg-panel-solid transition-colors hover:bg-muted/40">
       {/* Body (click → expand inline; no sidebar/drawer) */}
       <button
         type="button"
@@ -258,20 +260,28 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
           </span>
         </div>
 
-        {/* Company business activity (Gegenstand), Arabic — exterior line, shown
-            only for companies with a real statement; nothing when empty/NULL. */}
+        {/* Company business activity (Gegenstand), Arabic — exterior block, shown
+            only for companies with a real statement; nothing when empty/NULL.
+            Renders RTL locally (dir="rtl") inside the otherwise-German LTR card,
+            using logical properties. Full text: never truncated, always wraps. */}
         {activityAr ? (
-          <div dir="rtl" className="mt-2 flex items-start justify-between gap-2">
-            <p className="line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
+          <div
+            dir="rtl"
+            lang="ar"
+            className="mt-3 rounded-md border border-border bg-[rgba(255,255,255,0.03)] px-3 py-2 text-start"
+          >
+            <p className="text-[12px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
               <span className="font-medium text-foreground">النشاط: </span>
               {activityAr}
             </p>
             {activitySourceLabel || activityConfidenceLabel ? (
-              <span className="shrink-0 whitespace-nowrap rounded-none border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {[activitySourceLabel, activityConfidenceLabel]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
+              <div className="mt-1.5">
+                <span className="inline-block whitespace-nowrap rounded-full border border-border bg-[rgba(255,255,255,0.06)] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {[activitySourceLabel, activityConfidenceLabel]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </div>
             ) : null}
           </div>
         ) : null}
