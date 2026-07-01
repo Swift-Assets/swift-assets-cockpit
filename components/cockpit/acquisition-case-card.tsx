@@ -247,7 +247,7 @@ function AcquisitionCaseCardImpl({ data }: { data: CaseCardData }) {
           <Badge variant="outline">Firma</Badge>
           {data.preVerteilung ? <Badge variant="green">pre-Verteilung</Badge> : null}
         </div>
-        <h3 className="mt-3 line-clamp-2 text-[15px] font-semibold tracking-tight">
+        <h3 className="mt-3 text-[15px] font-semibold tracking-tight [overflow-wrap:anywhere]">
           {data.title}
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">

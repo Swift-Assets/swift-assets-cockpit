@@ -30,7 +30,7 @@ export function EmptyState({
       <div className="mb-5 text-muted-foreground">
         {icon ? (
           <div
-            className="flex h-11 w-11 items-center justify-center border border-border bg-card"
+            className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-panel-solid"
             aria-hidden
           >
             {icon}
