@@ -133,7 +133,7 @@ export function AcquisitionInbox({
   return (
     <div className="space-y-5">
       {/* Acquisition Gate tabs — server-driven (each is a ?gate= link). */}
-      <div className="cockpit-scroll flex gap-1 overflow-x-auto border border-border bg-card p-1">
+      <div className="cockpit-scroll flex gap-1 overflow-x-auto rounded-lg border border-border bg-panel-solid p-1">
         {GATES.map((g) => {
           const active = gate === g.key;
           const count = gateCounts[g.key];
@@ -144,8 +144,10 @@ export function AcquisitionInbox({
               title={g.description}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex shrink-0 items-center gap-2 px-4 py-2 text-[13px] font-medium tracking-wide transition-colors",
-                active ? "bg-ink text-paper" : "text-muted-foreground hover:text-foreground",
+                "flex shrink-0 items-center gap-2 rounded-md px-4 py-2 text-[13px] font-medium tracking-wide transition-colors",
+                active
+                  ? "border border-[rgba(124,92,255,0.4)] bg-[linear-gradient(135deg,rgba(124,92,255,0.24),rgba(56,189,248,0.18))] text-foreground"
+                  : "text-muted-foreground hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground",
               )}
             >
               {g.label}
@@ -175,7 +177,7 @@ export function AcquisitionInbox({
               <button
                 type="button"
                 onClick={() => setVisibleLimit((n) => n + PAGE_SIZE)}
-                className="border border-border bg-card px-4 py-2 text-[13px] font-medium tracking-wide text-foreground transition-colors hover:bg-muted/60"
+                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.06)] px-4 py-2 text-[13px] font-medium tracking-wide text-foreground transition-colors hover:-translate-y-px hover:bg-[rgba(255,255,255,0.12)]"
               >
                 Mehr laden
               </button>

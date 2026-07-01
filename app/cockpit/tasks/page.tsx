@@ -10,6 +10,13 @@ import { getMyTasks, summarizeTasks, type TaskRow } from "@/lib/cockpit/tasks.qu
 import { getCockpitUsers, type CockpitUser } from "@/lib/cockpit/users.queries";
 import { TaskCreateForm } from "@/components/cockpit/task-create-form";
 import { TaskRowActions } from "@/components/cockpit/task-row-actions";
+import {
+  DataTable,
+  DataTableHead,
+  Td,
+  Th,
+  Tr,
+} from "@/components/cockpit/data-table";
 
 export const dynamic = "force-dynamic";
 
@@ -63,62 +70,57 @@ function TaskTable({
   usersAvailable: boolean;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-muted-foreground">
-            <th className="py-2 pr-4 font-medium">Aufgabe</th>
-            <th className="py-2 pr-4 font-medium">Typ</th>
-            <th className="py-2 pr-4 font-medium">Priorität</th>
-            <th className="py-2 pr-4 font-medium">Status</th>
-            <th className="py-2 pr-4 font-medium">Fällig</th>
-            <th className="py-2 pr-4 font-medium">Zugewiesen</th>
-            <th className="py-2 pr-4 font-medium">Bezug</th>
-            <th className="py-2 pr-4 font-medium">Aktualisiert</th>
-            <th className="py-2 pr-4 font-medium">Aktionen</th>
-          </tr>
-        </thead>
+    <div className="cockpit-scroll overflow-x-auto">
+      <DataTable>
+        <DataTableHead>
+          <Th>Aufgabe</Th>
+          <Th>Typ</Th>
+          <Th>Priorität</Th>
+          <Th>Status</Th>
+          <Th>Fällig</Th>
+          <Th>Zugewiesen</Th>
+          <Th>Bezug</Th>
+          <Th>Aktualisiert</Th>
+          <Th>Aktionen</Th>
+        </DataTableHead>
         <tbody>
           {rows.map((t) => (
-            <tr
-              key={t.task_id}
-              className="border-b border-border/60 align-top last:border-0"
-            >
-              <td className="py-2 pr-4">
+            <Tr key={t.task_id} className="align-top">
+              <Td>
                 <div className="font-medium">{t.title ?? "—"}</div>
                 {t.description ? (
-                  <div className="max-w-[22rem] text-xs text-muted-foreground">
+                  <div className="max-w-[22rem] text-xs text-muted-foreground [overflow-wrap:anywhere]">
                     {t.description}
                   </div>
                 ) : null}
-              </td>
-              <td className="py-2 pr-4 text-muted-foreground">{t.task_type ?? "—"}</td>
-              <td className="py-2 pr-4">
+              </Td>
+              <Td className="text-muted-foreground">{t.task_type ?? "—"}</Td>
+              <Td>
                 <Badge variant={priorityVariant(t.priority)}>
                   {t.priority ?? "—"}
                 </Badge>
-              </td>
-              <td className="py-2 pr-4">{t.status ?? "—"}</td>
-              <td className="py-2 pr-4">
+              </Td>
+              <Td>{t.status ?? "—"}</Td>
+              <Td>
                 <Badge variant={dueVariant(t.due_bucket)}>
                   {DUE_LABEL[t.due_bucket ?? "no_due_date"] ?? "—"}
                 </Badge>
                 <div className="text-xs text-muted-foreground">
                   {formatDate(t.due_at)}
                 </div>
-              </td>
-              <td className="py-2 pr-4 text-muted-foreground">
+              </Td>
+              <Td className="text-muted-foreground">
                 {t.assigned_to_name ?? t.assigned_to_email ?? "—"}
-              </td>
-              <td className="py-2 pr-4 text-muted-foreground">
+              </Td>
+              <Td className="text-muted-foreground">
                 {t.related_kind
                   ? `${t.related_kind}${t.related_label ? `: ${t.related_label}` : ""}`
                   : "—"}
-              </td>
-              <td className="py-2 pr-4 text-muted-foreground">
+              </Td>
+              <Td className="text-muted-foreground">
                 {formatDate(t.updated_at)}
-              </td>
-              <td className="py-2 pr-4">
+              </Td>
+              <Td>
                 <TaskRowActions
                   taskId={t.task_id}
                   status={t.status}
@@ -128,11 +130,11 @@ function TaskTable({
                   users={users}
                   usersAvailable={usersAvailable}
                 />
-              </td>
-            </tr>
+              </Td>
+            </Tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </div>
   );
 }

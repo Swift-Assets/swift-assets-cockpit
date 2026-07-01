@@ -128,16 +128,21 @@ export function BekanntmachungTimeline({
 
   return (
     <section className="space-y-3">
-      {/* Insolvency CASE summary (distinct from company activity) */}
-      <div className="space-y-1.5 rounded-md bg-muted/40 p-3">
+      {/* Insolvency CASE summary (distinct from company activity). Arabic block
+          renders RTL locally; full text always shown (no clamp), wraps freely. */}
+      <div className="space-y-1.5 rounded-md border border-border bg-[rgba(255,255,255,0.03)] p-3">
         <p className="eyebrow">Fallzusammenfassung (AR)</p>
-        <p dir="rtl" className="text-[13px] leading-relaxed text-foreground">
+        <p
+          dir="rtl"
+          lang="ar"
+          className="text-[13px] leading-relaxed text-foreground [overflow-wrap:anywhere]"
+        >
           {caseSummaryAr}
         </p>
         {riskFlagsAr.length > 0 ? (
-          <ul dir="rtl" className="mt-1 space-y-0.5">
+          <ul dir="rtl" lang="ar" className="mt-1 space-y-0.5">
             {riskFlagsAr.map((f) => (
-              <li key={f} className="text-[11px] text-status-red">
+              <li key={f} className="text-[11px] text-status-red [overflow-wrap:anywhere]">
                 • {f}
               </li>
             ))}
@@ -149,7 +154,7 @@ export function BekanntmachungTimeline({
       <div className="space-y-1.5">
         <p className="eyebrow">Bekanntmachungen (Timeline)</p>
         {ordered.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">
+          <p dir="rtl" lang="ar" className="text-[12px] text-muted-foreground">
             لا توجد بيانات Timeline كافية بعد لهذه الحالة.
           </p>
         ) : (
@@ -157,7 +162,7 @@ export function BekanntmachungTimeline({
             {ordered.map((e) => (
               <li
                 key={e.id}
-                className="border-l-2 border-border pl-3 text-xs"
+                className="border-s-2 border-border ps-3 text-xs"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="tabular-nums font-medium text-foreground">
@@ -170,7 +175,11 @@ export function BekanntmachungTimeline({
                     {e.isPreVerteilung ? "akquiserelevant" : "monitor"}
                   </Badge>
                 </div>
-                <p dir="rtl" className="mt-0.5 leading-relaxed text-muted-foreground">
+                <p
+                  dir="rtl"
+                  lang="ar"
+                  className="mt-0.5 leading-relaxed text-muted-foreground [overflow-wrap:anywhere]"
+                >
                   {buildArabicTimelineEventSummary(e)}
                 </p>
                 {e.court || e.aktenzeichen ? (

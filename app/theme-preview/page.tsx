@@ -117,6 +117,46 @@ export default function ThemePreviewPage() {
         </div>
       </SectionCard>
 
+      {/* Dense table on the solid panel (Part C) — mirrors the tasks/leads tables. */}
+      <SectionCard
+        title="Aufgaben · dichte Tabelle (solid panel)"
+        description="Mehrspaltige Datentabelle auf der opaken Fläche (kein blur, Part C). Deutsche Labels, de-DE-Datumsformat, Status-/Prioritäts-Pills."
+      >
+        <div id="table-test" className="cockpit-scroll overflow-x-auto">
+          <DataTable>
+            <DataTableHead>
+              <Th>Aufgabe</Th>
+              <Th>Typ</Th>
+              <Th>Priorität</Th>
+              <Th>Status</Th>
+              <Th>Fällig</Th>
+              <Th>Zugewiesen</Th>
+              <Th align="right">Aktualisiert</Th>
+            </DataTableHead>
+            <tbody>
+              {[
+                { t: "Insolvenzverwalter kontaktieren", d: "Erstansprache zu Az. 502 IN 1234/26", ty: "outreach", p: "urgent", pv: "red" as const, s: "offen", due: "Überfällig", dv: "red" as const, a: "H. Jasem", u: "30.06.2026" },
+                { t: "Datenqualität prüfen", d: "Handelsregister-Abgleich Rheintal mbH", ty: "data_quality", p: "hoch", pv: "yellow" as const, s: "in Bearbeitung", due: "Heute", dv: "yellow" as const, a: "System", u: "01.07.2026" },
+                { t: "Follow-up Nordwind Solar", d: "Zweitkontakt nach 7 Tagen", ty: "manual", p: "mittel", pv: "muted" as const, s: "wartend", due: "Geplant", dv: "muted" as const, a: "H. Jasem", u: "28.06.2026" },
+              ].map((r) => (
+                <Tr key={r.t} className="align-top">
+                  <Td>
+                    <div className="font-medium">{r.t}</div>
+                    <div className="max-w-[22rem] text-xs text-muted-foreground [overflow-wrap:anywhere]">{r.d}</div>
+                  </Td>
+                  <Td className="text-muted-foreground">{r.ty}</Td>
+                  <Td><Badge variant={r.pv}>{r.p}</Badge></Td>
+                  <Td>{r.s}</Td>
+                  <Td><Badge variant={r.dv}>{r.due}</Badge></Td>
+                  <Td className="text-muted-foreground">{r.a}</Td>
+                  <Td align="right" className="tabular-nums text-muted-foreground">{r.u}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </DataTable>
+        </div>
+      </SectionCard>
+
       {/* Search + buttons */}
       <SectionCard title="Suche" description="Stichwort + Filter über Firmen-Insolvenzfälle.">
         <div className="flex flex-wrap items-center gap-2">
